@@ -36,7 +36,7 @@ export const COURSE_COLORS = [
 export const TIMETABLE_CONFIG = {
   startHour: 8,    // 8 AM
   endHour: 21,     // 9 PM
-  slotHeight: 60,  // pixels per hour (compact for better overview, similar to UBC)
+  slotHeight: 50,  // pixels per hour (more compact to reduce scrolling)
   headerHeight: 60,
   sidebarWidth: 80,
 };

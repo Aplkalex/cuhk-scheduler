@@ -58,11 +58,44 @@ html.dark body {
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateX(100%) scale(0.9);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%) scale(0.9);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideOutToTop {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
   }
 }
 
@@ -76,7 +109,19 @@ html.dark body {
 }
 
 .animate-slideIn {
-  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-slideOut {
+  animation: slideOut 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.animate-slideInFromTop {
+  animation: slideInFromTop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-slideOutToTop {
+  animation: slideOutToTop 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 .animate-shrink {

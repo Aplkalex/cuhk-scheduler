@@ -22,6 +22,7 @@ export default function Home() {
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [fullSectionWarning, setFullSectionWarning] = useState<{ course: Course; section: Section } | null>(null);
+  const [isWarningExiting, setIsWarningExiting] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const [selectedCourseDetails, setSelectedCourseDetails] = useState<SelectedCourse | null>(null);
   const [conflictToast, setConflictToast] = useState<Array<{ course1: string; course2: string }>>([]);
@@ -49,8 +50,12 @@ export default function Home() {
     // Show warning if section is full
     if (!hasAvailableSeats(section)) {
       setFullSectionWarning({ course, section });
+      setIsWarningExiting(false);
       // Auto-proceed after showing warning
-      setTimeout(() => setFullSectionWarning(null), 3000);
+      setTimeout(() => {
+        setIsWarningExiting(true);
+        setTimeout(() => setFullSectionWarning(null), 300);
+      }, 6000);
     }
 
     // Get existing color for this course if any section is already selected
@@ -221,6 +226,15 @@ export default function Home() {
     setConflictingCourses(Array.from(conflictingCodes));
   };
 
+  // Handle closing warning with animation
+  const handleCloseWarning = () => {
+    setIsWarningExiting(true);
+    setTimeout(() => {
+      setFullSectionWarning(null);
+      setIsWarningExiting(false);
+    }, 300);
+  };
+
   // Clear all courses
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   
@@ -281,7 +295,7 @@ export default function Home() {
 
       <main className="flex-1 w-full px-2 sm:px-4 lg:px-6 py-2 lg:py-3 bg-transparent overflow-hidden flex flex-col">
         {/* Warnings container - only takes space when needed */}
-        <div className="max-w-[1600px] mx-auto space-y-2 mb-2 flex-shrink-0">
+        <div className="max-w-[1600px] w-full mx-auto space-y-2 mb-2 flex-shrink-0">
           {/* Disclaimer - Compact and dismissible */}
           {showDisclaimer && (
             <div className="bg-amber-50/70 dark:bg-amber-900/10 backdrop-blur-md border border-amber-200/50 dark:border-amber-800/30 rounded-lg p-2 flex items-center gap-2 shadow-lg">
@@ -296,28 +310,11 @@ export default function Home() {
               </button>
             </div>
           )}
-
-          {/* Conflicts warning */}
-          {conflicts.length > 0 && (
-            <div className="bg-red-50/70 dark:bg-red-900/10 backdrop-blur-md border border-red-200/50 dark:border-red-800/30 rounded-xl p-3 shadow-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-red-900 dark:text-red-300 mb-1 text-sm">Schedule Conflicts Detected!</p>
-                  {conflicts.map((conflict, idx) => (
-                    <p key={idx} className="text-xs text-red-700 dark:text-red-400">
-                      {conflict.course1.course.courseCode} conflicts with {conflict.course2.course.courseCode}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 max-w-[1800px] w-full mx-auto flex-1 min-h-0">
+        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 max-w-[1700px] w-full mx-auto flex-1 min-h-0 lg:ml-0 lg:mr-auto lg:pl-6">
           {/* Left sidebar - Course search - Flexible width */}
-          <div className="w-full lg:w-[360px] lg:min-w-[320px] lg:max-w-[400px] flex flex-col gap-3 min-h-0 flex-shrink-0">
+          <div className="w-full lg:w-[320px] lg:min-w-[300px] lg:max-w-[340px] flex flex-col gap-3 min-h-0 flex-shrink-0">
             <div className="bg-white/70 dark:bg-[#252526]/70 backdrop-blur-xl rounded-xl shadow-lg p-4 border border-gray-200/30 dark:border-gray-700/30 flex-shrink-0">
               <div className="flex items-center gap-2 mb-3">
                 <Book className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -503,29 +500,38 @@ export default function Home() {
 
       {/* Full Section Warning Toast */}
       {fullSectionWarning && (
-        <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-right-5 duration-300">
-          <div className="bg-amber-50/95 dark:bg-amber-900/95 backdrop-blur-xl border-2 border-amber-400 dark:border-amber-600 rounded-xl shadow-2xl p-4 max-w-md">
-            <div className="flex items-start gap-3">
-              <div className="bg-amber-500 dark:bg-amber-600 text-white p-2 rounded-full flex-shrink-0">
-                <AlertCircle className="w-5 h-5" />
+        <div className={`fixed top-20 right-4 z-50 ${isWarningExiting ? 'animate-slideOutToTop' : 'animate-slideInFromTop'}`}>
+          <div className="bg-amber-50/95 dark:bg-amber-900/95 backdrop-blur-xl border-2 border-amber-400 dark:border-amber-600 rounded-xl shadow-2xl overflow-hidden max-w-md">
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="bg-amber-500 dark:bg-amber-600 text-white p-2 rounded-full flex-shrink-0 shadow-lg">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-amber-900 dark:text-amber-100 mb-1 text-base">
+                    Section Full - Added to Schedule
+                  </h4>
+                  <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
+                    <span className="font-semibold">{fullSectionWarning.course.courseCode}</span> - {fullSectionWarning.section.sectionType} {fullSectionWarning.section.sectionId} has no available seats.
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    ⚠️ You may need to join a waitlist or obtain instructor consent to enroll.
+                  </p>
+                </div>
+                <button
+                  onClick={handleCloseWarning}
+                  className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-200/50 dark:hover:bg-amber-800/30 rounded p-1 transition-all flex-shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <div className="flex-1">
-                <h4 className="font-bold text-amber-900 dark:text-amber-100 mb-1">
-                  Section Full - Added to Schedule
-                </h4>
-                <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
-                  <span className="font-semibold">{fullSectionWarning.course.courseCode}</span> - {fullSectionWarning.section.sectionType} {fullSectionWarning.section.sectionId} has no available seats.
-                </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  ⚠️ You may need to join a waitlist or obtain instructor consent to enroll.
-                </p>
-              </div>
-              <button
-                onClick={() => setFullSectionWarning(null)}
-                className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 flex-shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            </div>
+            {/* Progress bar */}
+            <div className="h-1 bg-amber-200/50 dark:bg-amber-950/50">
+              <div 
+                className="h-full bg-amber-500 dark:bg-amber-400 animate-shrink"
+                style={{ animationDuration: '6000ms' }}
+              />
             </div>
           </div>
         </div>
