@@ -1,0 +1,145 @@
+// Core data types for CUHK Course Scheduler
+
+/**
+ * Days of the week
+ */
+export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+
+/**
+ * Academic term information
+ */
+export interface Term {
+  id: string;
+  name: string; // e.g., "2025-26 Term 1"
+  startDate: Date;
+  endDate: Date;
+  year: string; // e.g., "2025-26"
+  term: number; // 1 or 2
+}
+
+/**
+ * Time slot for a course section
+ */
+export interface TimeSlot {
+  day: DayOfWeek;
+  startTime: string; // 24-hour format, e.g., "14:30"
+  endTime: string;   // 24-hour format, e.g., "16:15"
+  location?: string; // e.g., "LSB LT1", "ERB 404"
+}
+
+/**
+ * Instructor information
+ */
+export interface Instructor {
+  name: string;
+  email?: string;
+  department?: string;
+}
+
+/**
+ * Course section (e.g., Lecture A, Tutorial T1)
+ */
+export interface Section {
+  sectionId: string; // e.g., "A", "B", "T1", "L1"
+  sectionType: 'Lecture' | 'Tutorial' | 'Lab' | 'Seminar';
+  instructor?: Instructor;
+  timeSlots: TimeSlot[];
+  quota: number; // Total seats
+  enrolled: number; // Current enrollment
+  seatsRemaining: number;
+  waitlist?: number;
+}
+
+/**
+ * Full course information
+ */
+export interface Course {
+  _id?: string; // MongoDB ID
+  courseCode: string; // e.g., "CSCI3100"
+  courseName: string; // e.g., "Software Engineering"
+  department: string; // e.g., "Computer Science and Engineering"
+  credits: number; // e.g., 3
+  description?: string;
+  prerequisites?: string[];
+  sections: Section[];
+  term: string; // e.g., "2025-26 Term 1"
+  career: 'Undergraduate' | 'Postgraduate';
+  
+  // Additional metadata
+  lastUpdated?: Date;
+}
+
+/**
+ * User's selected course for their schedule
+ */
+export interface SelectedCourse {
+  course: Course;
+  selectedSection: Section;
+  color?: string; // For visual differentiation on timetable
+}
+
+/**
+ * User's complete schedule
+ */
+export interface Schedule {
+  _id?: string; // MongoDB ID
+  userId?: string; // For future auth implementation
+  name: string; // e.g., "Fall 2025 Schedule"
+  term: string;
+  courses: SelectedCourse[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Timetable conflict information
+ */
+export interface Conflict {
+  course1: SelectedCourse;
+  course2: SelectedCourse;
+  conflictingTimeSlots: {
+    slot1: TimeSlot;
+    slot2: TimeSlot;
+  }[];
+}
+
+/**
+ * User preferences for schedule optimization
+ */
+export interface SchedulePreferences {
+  preferredStartTime?: string; // e.g., "09:00" - avoid early classes
+  preferredEndTime?: string;   // e.g., "18:00" - avoid late classes
+  daysOff?: DayOfWeek[];       // Preferred days without classes
+  minimizeGaps?: boolean;       // Minimize breaks between classes
+  maxGapMinutes?: number;       // Maximum acceptable gap (e.g., 60)
+  backToBack?: boolean;         // Allow back-to-back classes
+}
+
+/**
+ * Search/filter parameters
+ */
+export interface CourseFilters {
+  searchQuery?: string; // Search by code, name, or instructor
+  department?: string;
+  credits?: number;
+  term?: string;
+  career?: 'Undergraduate' | 'Postgraduate';
+  hasSeatsAvailable?: boolean;
+  days?: DayOfWeek[];
+  timeRange?: {
+    start: string;
+    end: string;
+  };
+}
+
+/**
+ * Data sync log (for tracking scraper runs)
+ */
+export interface SyncLog {
+  _id?: string;
+  timestamp: Date;
+  status: 'success' | 'failed' | 'partial';
+  coursesUpdated: number;
+  errors?: string[];
+  term: string;
+}
