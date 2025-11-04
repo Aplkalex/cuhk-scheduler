@@ -326,10 +326,28 @@ export default function Home() {
         // Removing a course
         const newCodes = prev.filter(code => code !== courseCode);
         
-        // If this is the last course, show confirmation dialog
-        if (newCodes.length === 0) {
+        // Only show confirmation if:
+        // 1. This is the last course AND
+        // 2. There are generated schedules to clear
+        if (newCodes.length === 0 && generatedSchedules.length > 0) {
           setShowClearConfirm(true);
           return prev; // Don't remove yet, wait for confirmation
+        }
+        
+        // Remove this course from generated schedules
+        if (generatedSchedules.length > 0) {
+          const updatedSchedules = generatedSchedules.map(schedule => ({
+            ...schedule,
+            sections: schedule.sections.filter(section => section.course.courseCode !== courseCode)
+          }));
+          setGeneratedSchedules(updatedSchedules);
+          
+          // Update currently displayed schedule
+          if (selectedScheduleIndex < updatedSchedules.length) {
+            const currentSchedule = updatedSchedules[selectedScheduleIndex];
+            const schedulesWithColors = assignColorsToSchedule(currentSchedule.sections);
+            setSelectedCourses(schedulesWithColors);
+          }
         }
         
         return newCodes;
