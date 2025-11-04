@@ -83,7 +83,7 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse, 
           {displayDays.map((day) => (
             <div
               key={day}
-              className="relative bg-white/40 dark:bg-[#1e1e1e]/40 backdrop-blur-sm rounded-lg border border-gray-200/40 dark:border-gray-700/40 overflow-hidden"
+              className="relative bg-white/40 dark:bg-[#1e1e1e]/40 backdrop-blur-sm rounded-lg border border-gray-200/40 dark:border-gray-700/40 overflow-hidden transition-all duration-300"
               style={{ height: `${slotHeight * hours.length}px` }}
             >
               {/* Hour grid lines */}
@@ -110,7 +110,8 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse, 
                         key={blockId}
                         className={cn(
                           'absolute left-1 right-1 rounded-lg cursor-pointer group',
-                          'transition-all hover:shadow-xl hover:scale-[1.02]',
+                          'timetable-block-enter',
+                          'hover:shadow-xl hover:scale-[1.02]',
                           'text-white flex flex-col',
                           // Compact padding for denser layout
                           'px-1.5 py-1',
@@ -119,7 +120,10 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse, 
                           // Red border for full sections
                           isFull && 'border-2 border-red-500 dark:border-red-400 shadow-[0_0_0_1px_rgba(239,68,68,0.5)]'
                         )}
-                        style={style}
+                        style={{
+                          ...style,
+                          transition: 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease',
+                        }}
                         onMouseEnter={() => setHoveredCourse(blockId)}
                         onMouseLeave={() => setHoveredCourse(null)}
                       >
