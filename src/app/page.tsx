@@ -7,6 +7,7 @@ import { TimetableGrid } from '@/components/TimetableGrid';
 import { CourseList } from '@/components/CourseList';
 import { SearchBar, FilterBar, FilterButton } from '@/components/SearchBar';
 import { BuildingReference } from '@/components/BuildingReference';
+import { BuildingModal } from '@/components/BuildingModal';
 import { generateCourseColor, calculateTotalCredits, detectConflicts } from '@/lib/schedule-utils';
 import { DISCLAIMER } from '@/lib/constants';
 import { Calendar, Book, AlertCircle, Trash2 } from 'lucide-react';
@@ -16,6 +17,7 @@ export default function Home() {
   const [selectedCourses, setSelectedCourses] = useState<SelectedCourse[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
   // Filter courses based on search and filters
   const filteredCourses = mockCourses.filter((course) => {
@@ -213,6 +215,7 @@ export default function Home() {
                   const index = selectedCourses.indexOf(course);
                   handleRemoveCourse(index);
                 }}
+                onLocationClick={(location) => setSelectedLocation(location)}
               />
             ) : (
               <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-100">
@@ -305,6 +308,15 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Building Location Modal - Single instance for entire page */}
+      {selectedLocation && (
+        <BuildingModal
+          location={selectedLocation}
+          isOpen={true}
+          onClose={() => setSelectedLocation(null)}
+        />
       )}
     </div>
   );

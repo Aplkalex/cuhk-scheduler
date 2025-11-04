@@ -5,16 +5,16 @@ import { SelectedCourse, DayOfWeek } from '@/types';
 import { TIMETABLE_CONFIG, WEEKDAYS } from '@/lib/constants';
 import { timeToMinutes, formatTime } from '@/lib/schedule-utils';
 import { cn } from '@/lib/utils';
-import { LocationTooltip } from '@/components/LocationTooltip';
 import { X } from 'lucide-react';
 
 interface TimetableGridProps {
   selectedCourses: SelectedCourse[];
   onCourseClick?: (course: SelectedCourse) => void;
   onRemoveCourse?: (course: SelectedCourse) => void;
+  onLocationClick?: (location: string) => void;
 }
 
-export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse }: TimetableGridProps) {
+export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse, onLocationClick }: TimetableGridProps) {
   const [hoveredCourse, setHoveredCourse] = useState<string | null>(null);
   const { startHour, endHour, slotHeight } = TIMETABLE_CONFIG;
   
@@ -117,7 +117,6 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse }
                           'overflow-visible'
                         )}
                         style={style}
-                        onClick={() => onCourseClick?.(selectedCourse)}
                         onMouseEnter={() => setHoveredCourse(blockId)}
                         onMouseLeave={() => setHoveredCourse(null)}
                       >
@@ -151,11 +150,16 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse }
                             {selectedCourse.selectedSection.sectionType.slice(0, 3)} {selectedCourse.selectedSection.sectionId}
                           </div>
                           {slot.location && (
-                            <LocationTooltip location={slot.location}>
-                              <div className="text-[11px] leading-snug opacity-80 border-b border-white/30 border-dotted inline-block truncate max-w-full">
-                                {slot.location}
-                              </div>
-                            </LocationTooltip>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onLocationClick?.(slot.location!);
+                              }}
+                              className="text-[11px] leading-snug opacity-80 block w-full text-left cursor-pointer hover:opacity-100 hover:underline transition-opacity bg-transparent border-0 p-0 text-inherit font-inherit truncate"
+                            >
+                              {slot.location}
+                            </button>
                           )}
                           <div className="text-[11px] leading-snug opacity-75 truncate">
                             {formatTime(slot.startTime)}-{formatTime(slot.endTime)}
