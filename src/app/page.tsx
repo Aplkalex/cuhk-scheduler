@@ -283,7 +283,11 @@ export default function Home() {
   };
 
   const confirmClearSchedule = () => {
+    // Clear all schedule-related state
     setSelectedCourses([]);
+    setSelectedCourseCodes([]);
+    setGeneratedSchedules([]);
+    setSelectedScheduleIndex(0);
     setShowClearConfirm(false);
   };
 
@@ -317,11 +321,23 @@ export default function Home() {
 
   // Toggle course selection in auto-generate mode
   const handleToggleCourseSelection = (courseCode: string) => {
-    setSelectedCourseCodes(prev => 
-      prev.includes(courseCode)
-        ? prev.filter(code => code !== courseCode)
-        : [...prev, courseCode]
-    );
+    setSelectedCourseCodes(prev => {
+      if (prev.includes(courseCode)) {
+        // Removing a course
+        const newCodes = prev.filter(code => code !== courseCode);
+        
+        // If this is the last course, show confirmation dialog
+        if (newCodes.length === 0) {
+          setShowClearConfirm(true);
+          return prev; // Don't remove yet, wait for confirmation
+        }
+        
+        return newCodes;
+      } else {
+        // Adding a course
+        return [...prev, courseCode];
+      }
+    });
   };
 
   // Handle schedule generation
@@ -809,12 +825,9 @@ export default function Home() {
 
                       {/* Clear button */}
                       <button
-                        onClick={() => {
-                          setGeneratedSchedules([]);
-                          setSelectedScheduleIndex(0);
-                        }}
+                        onClick={handleClearSchedule}
                         className="p-2 bg-white dark:bg-[#1e1e1e] rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-all shadow-sm hover:shadow-md group"
-                        title="Clear schedule"
+                        title="Clear schedules"
                       >
                         <X className="w-4 h-4 text-red-500 dark:text-red-400 group-hover:scale-110 transition-transform" />
                       </button>
