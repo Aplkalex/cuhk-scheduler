@@ -6,6 +6,7 @@ import { mockCourses } from '@/data/mock-courses';
 import { TimetableGrid } from '@/components/TimetableGrid';
 import { CourseList } from '@/components/CourseList';
 import { SearchBar, FilterBar, FilterButton } from '@/components/SearchBar';
+import { BuildingReference } from '@/components/BuildingReference';
 import { generateCourseColor, calculateTotalCredits, detectConflicts } from '@/lib/schedule-utils';
 import { DISCLAIMER } from '@/lib/constants';
 import { Calendar, Book, AlertCircle, Trash2 } from 'lucide-react';
@@ -262,6 +263,9 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* Building Reference floating button */}
+      <BuildingReference />
     </div>
   );
 }

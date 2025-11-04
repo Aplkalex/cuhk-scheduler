@@ -1,5 +1,6 @@
 import { SelectedCourse, TimeSlot } from '@/types';
 import { formatTime } from '@/lib/schedule-utils';
+import { formatLocation } from '@/lib/location-utils';
 import { cn } from '@/lib/utils';
 
 interface CourseCardProps {
@@ -64,7 +65,7 @@ export function CourseCard({ selectedCourse, className, onClick, onRemove }: Cou
           </div>
         )}
         {selectedSection.timeSlots[0]?.location && (
-          <div className="text-blue-600">
+          <div className="text-blue-600" title={formatLocation(selectedSection.timeSlots[0].location)}>
             Venue: {selectedSection.timeSlots[0].location}
           </div>
         )}

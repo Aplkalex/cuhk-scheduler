@@ -4,6 +4,7 @@ import { SelectedCourse, DayOfWeek } from '@/types';
 import { TIMETABLE_CONFIG, WEEKDAYS } from '@/lib/constants';
 import { timeToMinutes, formatTime } from '@/lib/schedule-utils';
 import { cn } from '@/lib/utils';
+import { LocationTooltip } from '@/components/LocationTooltip';
 
 interface TimetableGridProps {
   selectedCourses: SelectedCourse[];
@@ -107,10 +108,14 @@ export function TimetableGrid({ selectedCourses, onCourseClick }: TimetableGridP
                         <div className="text-xs opacity-90">
                           {selectedCourse.selectedSection.sectionType} {selectedCourse.selectedSection.sectionId}
                         </div>
+                        {slot.location && (
+                          <LocationTooltip location={slot.location}>
+                            <div className="text-xs opacity-75 mt-1 border-b border-white/30 border-dotted inline-block">
+                              {slot.location}
+                            </div>
+                          </LocationTooltip>
+                        )}
                         <div className="text-xs opacity-75 mt-1">
-                          {slot.location}
-                        </div>
-                        <div className="text-xs opacity-75">
                           {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
                         </div>
                       </div>
