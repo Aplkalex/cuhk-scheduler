@@ -398,17 +398,33 @@ function CourseListItem({ course, onAddSection, onRemoveSection, selectedCourses
             {course.sections.map((section) => {
               const isSelected = isSectionSelected(section);
               
-              // Check if this is a tutorial course and if another tutorial is selected
-              const isTutorialCourse = course.sections.every(s => s.sectionType === 'Tutorial');
-              const selectedTutorialForThisCourse = isTutorialCourse 
-                ? selectedCourses.find(sc => 
-                    sc.course.courseCode === course.courseCode && 
-                    sc.selectedSection.sectionType === 'Tutorial'
-                  )?.selectedSection
-                : null;
-              const isOtherTutorialSelected = !!(selectedTutorialForThisCourse && 
-                                             selectedTutorialForThisCourse.sectionId !== section.sectionId);
-              const isDisabled = isOtherTutorialSelected;
+              // Check if this course has both lectures and tutorials (but no parentLecture links)
+              const hasLectures = course.sections.some(s => s.sectionType === 'Lecture');
+              const hasTutorials = course.sections.some(s => s.sectionType === 'Tutorial');
+              const hasBothLecAndTut = hasLectures && hasTutorials;
+              
+              // For tutorials in courses with lectures, only allow one tutorial at a time
+              let isDisabled = false;
+              let selectedTutorialForThisCourse = null;
+              
+              if (section.sectionType === 'Tutorial' && hasBothLecAndTut) {
+                selectedTutorialForThisCourse = selectedCourses.find(sc => 
+                  sc.course.courseCode === course.courseCode && 
+                  sc.selectedSection.sectionType === 'Tutorial'
+                )?.selectedSection;
+                isDisabled = !!(selectedTutorialForThisCourse && 
+                               selectedTutorialForThisCourse.sectionId !== section.sectionId);
+              }
+              
+              // For pure tutorial courses (no lectures), block other tutorials
+              if (section.sectionType === 'Tutorial' && !hasLectures) {
+                selectedTutorialForThisCourse = selectedCourses.find(sc => 
+                  sc.course.courseCode === course.courseCode && 
+                  sc.selectedSection.sectionType === 'Tutorial'
+                )?.selectedSection;
+                isDisabled = !!(selectedTutorialForThisCourse && 
+                               selectedTutorialForThisCourse.sectionId !== section.sectionId);
+              }
               const isFull = !hasAvailableSeats(section);
               
               return (

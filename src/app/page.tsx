@@ -55,6 +55,11 @@ export default function Home() {
       (sc) => sc.course.courseCode === course.courseCode
     )?.color;
 
+    // Get all currently used colors to avoid duplicates
+    const usedColors = Array.from(new Set(
+      selectedCourses.map(sc => sc.color).filter((c): c is string => c !== undefined)
+    ));
+
     // Check if this is a lecture and if another lecture from the same course is already selected
     if (section.sectionType === 'Lecture') {
       const existingLectureIndex = selectedCourses.findIndex(
@@ -98,7 +103,7 @@ export default function Home() {
         );
 
         if (parentLecture) {
-          const lectureColor = existingCourseColor || generateCourseColor(selectedCourses.length);
+          const lectureColor = existingCourseColor || generateCourseColor(course.courseCode, usedColors);
           const newCourses = [
             ...selectedCourses,
             {
@@ -149,7 +154,7 @@ export default function Home() {
     const newCourse: SelectedCourse = {
       course,
       selectedSection: section,
-      color: existingCourseColor || generateCourseColor(selectedCourses.length),
+      color: existingCourseColor || generateCourseColor(course.courseCode, usedColors),
     };
     setSelectedCourses([...selectedCourses, newCourse]);
   };
@@ -185,12 +190,12 @@ export default function Home() {
   const conflicts = detectConflicts(selectedCourses);
 
   return (
-    <div className="min-h-screen relative">
+    <div className="h-screen flex flex-col relative">
       {/* Dark mode background overlay - ensures solid black */}
       <div className="fixed inset-0 bg-[#1e1e1e] -z-10 dark:block hidden" />
       
       {/* Header - Ultra compact */}
-      <header className="bg-white/80 dark:bg-[#252526]/70 backdrop-blur-xl shadow-sm border-b border-gray-200/50 dark:border-gray-700/30 sticky top-0 z-50">
+      <header className="bg-white/80 dark:bg-[#252526]/70 backdrop-blur-xl shadow-sm border-b border-gray-200/50 dark:border-gray-700/30 sticky top-0 z-50 flex-shrink-0">
         <div className="w-full px-3 sm:px-4 lg:px-6 py-2">
           <div className="flex items-center justify-between max-w-[1600px] mx-auto">
             <div className="flex items-center gap-2">
@@ -226,9 +231,9 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="w-full px-2 sm:px-4 lg:px-6 py-2 lg:py-3 bg-transparent">
+      <main className="flex-1 w-full px-2 sm:px-4 lg:px-6 py-2 lg:py-3 bg-transparent overflow-hidden flex flex-col">
         {/* Warnings container - only takes space when needed */}
-        <div className="max-w-[1600px] mx-auto space-y-2 mb-2">
+        <div className="max-w-[1600px] mx-auto space-y-2 mb-2 flex-shrink-0">
           {/* Disclaimer - Compact and dismissible */}
           {showDisclaimer && (
             <div className="bg-amber-50/70 dark:bg-amber-900/10 backdrop-blur-md border border-amber-200/50 dark:border-amber-800/30 rounded-lg p-2 flex items-center gap-2 shadow-lg">
@@ -262,9 +267,9 @@ export default function Home() {
           )}
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 max-w-[1800px] mx-auto h-[calc(100vh-120px)]">
+        <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 max-w-[1800px] w-full mx-auto flex-1 min-h-0">
           {/* Left sidebar - Course search - Flexible width */}
-          <div className="w-full lg:w-[360px] lg:min-w-[320px] lg:max-w-[400px] flex flex-col gap-3 min-h-0">
+          <div className="w-full lg:w-[360px] lg:min-w-[320px] lg:max-w-[400px] flex flex-col gap-3 min-h-0 flex-shrink-0">
             <div className="bg-white/70 dark:bg-[#252526]/70 backdrop-blur-xl rounded-xl shadow-lg p-4 border border-gray-200/30 dark:border-gray-700/30 flex-shrink-0">
               <div className="flex items-center gap-2 mb-3">
                 <Book className="w-4 h-4 text-purple-600 dark:text-purple-400" />

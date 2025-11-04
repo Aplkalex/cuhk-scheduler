@@ -19,6 +19,7 @@ export const mockCourses: Course[] = [
       {
         sectionId: 'A',
         sectionType: 'Lecture',
+        classNumber: 3001,
         instructor: {
           name: 'Prof. CHAN Tai Man',
           department: 'CSE',
@@ -47,6 +48,8 @@ export const mockCourses: Course[] = [
       {
         sectionId: 'T1',
         sectionType: 'Tutorial',
+        parentLecture: 'A',
+        classNumber: 3002,
         language: 'English',
         addConsent: false,
         dropConsent: false,
@@ -65,6 +68,8 @@ export const mockCourses: Course[] = [
       {
         sectionId: 'T2',
         sectionType: 'Tutorial',
+        parentLecture: 'A',
+        classNumber: 3003,
         language: 'English',
         addConsent: false,
         dropConsent: false,
@@ -97,6 +102,7 @@ export const mockCourses: Course[] = [
       {
         sectionId: 'A',
         sectionType: 'Lecture',
+        classNumber: 2001,
         instructor: {
           name: 'Prof. WONG Siu Kei',
           department: 'MATH',
@@ -139,6 +145,7 @@ export const mockCourses: Course[] = [
       {
         sectionId: 'A',
         sectionType: 'Lecture',
+        classNumber: 2780,
         instructor: {
           name: 'Prof. LEE Ming',
           department: 'ENGG',
@@ -179,6 +186,7 @@ export const mockCourses: Course[] = [
     sections: [
       {
         sectionId: 'A',
+        classNumber: 1492,
         language: 'Bilingual',
         addConsent: false,
         dropConsent: false,
@@ -216,6 +224,7 @@ export const mockCourses: Course[] = [
       {
         sectionId: 'A',
         sectionType: 'Lecture',
+        classNumber: 2100,
         instructor: {
           name: 'Prof. LAM Yiu Sang',
           department: 'CSE',
@@ -258,6 +267,7 @@ export const mockCourses: Course[] = [
       {
         sectionId: 'A',
         sectionType: 'Lecture',
+        classNumber: 1001,
         instructor: {
           name: 'Prof. CHENG Wing Tat',
           department: 'PHYS',
@@ -322,6 +332,7 @@ export const mockCourses: Course[] = [
         sectionId: 'AT01',
         sectionType: 'Tutorial',
         parentLecture: 'A',
+        classNumber: 6747,
         language: 'Chinese',
         timeSlots: [
           {
@@ -339,6 +350,7 @@ export const mockCourses: Course[] = [
         sectionId: 'AT02',
         sectionType: 'Tutorial',
         parentLecture: 'A',
+        classNumber: 6748,
         language: 'Chinese',
         timeSlots: [
           {
@@ -356,6 +368,7 @@ export const mockCourses: Course[] = [
         sectionId: 'AT03',
         sectionType: 'Tutorial',
         parentLecture: 'A',
+        classNumber: 6749,
         language: 'Chinese',
         timeSlots: [
           {
@@ -373,6 +386,7 @@ export const mockCourses: Course[] = [
         sectionId: 'AT04',
         sectionType: 'Tutorial',
         parentLecture: 'A',
+        classNumber: 6750,
         language: 'Chinese',
         timeSlots: [
           {
@@ -412,6 +426,7 @@ export const mockCourses: Course[] = [
         sectionId: 'BT01',
         sectionType: 'Tutorial',
         parentLecture: 'B',
+        classNumber: 6751,
         language: 'English',
         timeSlots: [
           {
@@ -429,6 +444,7 @@ export const mockCourses: Course[] = [
         sectionId: 'BT02',
         sectionType: 'Tutorial',
         parentLecture: 'B',
+        classNumber: 6752,
         language: 'English',
         timeSlots: [
           {
@@ -446,6 +462,7 @@ export const mockCourses: Course[] = [
         sectionId: 'BT03',
         sectionType: 'Tutorial',
         parentLecture: 'B',
+        classNumber: 6753,
         language: 'English',
         timeSlots: [
           {
@@ -463,6 +480,7 @@ export const mockCourses: Course[] = [
         sectionId: 'BT04',
         sectionType: 'Tutorial',
         parentLecture: 'B',
+        classNumber: 6754,
         language: 'English',
         timeSlots: [
           {
@@ -480,6 +498,7 @@ export const mockCourses: Course[] = [
         sectionId: 'BT05',
         sectionType: 'Tutorial',
         parentLecture: 'B',
+        classNumber: 6755,
         language: 'English',
         timeSlots: [
           {
@@ -497,6 +516,7 @@ export const mockCourses: Course[] = [
         sectionId: 'BT06',
         sectionType: 'Tutorial',
         parentLecture: 'B',
+        classNumber: 6756,
         language: 'English',
         timeSlots: [
           {
@@ -536,6 +556,7 @@ export const mockCourses: Course[] = [
         sectionId: 'CT01',
         sectionType: 'Tutorial',
         parentLecture: 'C',
+        classNumber: 6757,
         language: 'Chinese',
         timeSlots: [
           {
@@ -553,6 +574,7 @@ export const mockCourses: Course[] = [
         sectionId: 'CT02',
         sectionType: 'Tutorial',
         parentLecture: 'C',
+        classNumber: 6758,
         language: 'Chinese',
         timeSlots: [
           {
@@ -570,6 +592,7 @@ export const mockCourses: Course[] = [
         sectionId: 'CT03',
         sectionType: 'Tutorial',
         parentLecture: 'C',
+        classNumber: 6759,
         language: 'Chinese',
         timeSlots: [
           {
@@ -587,6 +610,7 @@ export const mockCourses: Course[] = [
         sectionId: 'CT04',
         sectionType: 'Tutorial',
         parentLecture: 'C',
+        classNumber: 6760,
         language: 'Chinese',
         timeSlots: [
           {
@@ -604,6 +628,7 @@ export const mockCourses: Course[] = [
         sectionId: 'CT05',
         sectionType: 'Tutorial',
         parentLecture: 'C',
+        classNumber: 6761,
         language: 'Chinese',
         timeSlots: [
           {
@@ -621,6 +646,7 @@ export const mockCourses: Course[] = [
         sectionId: 'CT06',
         sectionType: 'Tutorial',
         parentLecture: 'C',
+        classNumber: 6762,
         language: 'Chinese',
         timeSlots: [
           {

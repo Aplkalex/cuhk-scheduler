@@ -109,9 +109,10 @@ export function formatTime(time: string): string {
 }
 
 /**
- * Generate a random color for course visualization
+ * Generate a unique color for course visualization
+ * Uses courseCode hash to ensure consistent unique colors
  */
-export function generateCourseColor(index: number): string {
+export function generateCourseColor(courseCode: string, usedColors: string[]): string {
   const colors = [
     '#8B5CF6', // Purple
     '#3B82F6', // Blue
@@ -121,8 +122,29 @@ export function generateCourseColor(index: number): string {
     '#EC4899', // Pink
     '#6366F1', // Indigo
     '#14B8A6', // Teal
+    '#F97316', // Orange
+    '#06B6D4', // Cyan
+    '#84CC16', // Lime
+    '#A855F7', // Violet
+    '#D946EF', // Fuchsia
+    '#0EA5E9', // Sky
+    '#22C55E', // Emerald
+    '#FB923C', // Light Orange
   ];
-  return colors[index % colors.length];
+
+  // Find first color not in usedColors
+  for (const color of colors) {
+    if (!usedColors.includes(color)) {
+      return color;
+    }
+  }
+  
+  // If all colors used, generate hash-based color
+  let hash = 0;
+  for (let i = 0; i < courseCode.length; i++) {
+    hash = courseCode.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
 }
 
 /**

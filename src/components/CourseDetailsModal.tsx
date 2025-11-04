@@ -68,15 +68,18 @@ export function CourseDetailsModal({ selectedCourse, onClose, onLocationClick }:
               Section Details
             </h3>
             <div className="space-y-3">
-              <div className="flex items-start">
-                <div className="text-gray-600 dark:text-gray-400 font-medium text-sm w-20 flex-shrink-0">
-                  Section:
+              <div>
+                <div className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1">
+                  Section
                 </div>
-                <div className="text-gray-900 dark:text-white text-sm flex-1">
+                <div className="text-gray-900 dark:text-white text-base font-semibold">
+                  {selectedSection.sectionType === 'Lecture' && 'Lecture '}
+                  {selectedSection.sectionType === 'Tutorial' && 'Tutorial '}
+                  {selectedSection.sectionType === 'Lab' && 'Lab '}
                   {selectedSection.sectionId}
                   {selectedSection.classNumber && (
-                    <span className="text-gray-500 dark:text-gray-400 ml-1">
-                      (Class {selectedSection.classNumber})
+                    <span className="text-gray-600 dark:text-gray-400 font-normal ml-2">
+                      ({selectedSection.classNumber})
                     </span>
                   )}
                 </div>
