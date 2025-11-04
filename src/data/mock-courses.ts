@@ -10,7 +10,8 @@ export const mockCourses: Course[] = [
     courseName: 'Software Engineering',
     department: 'Computer Science and Engineering',
     credits: 3,
-    description: 'This course introduces the theory and practice of software engineering. Topics include software process models, requirements analysis, design patterns, testing, and project management.',
+    description: 'This course introduces the theory and practice of software engineering. Topics include software process models, requirements analysis, design patterns, testing, and project management. Students will work in teams to develop a software project using modern development methodologies and tools.',
+    enrollmentRequirements: 'Prerequisites: CSCI2100. Not for students who have taken ENGG3080.',
     prerequisites: ['CSCI2100'],
     term: '2025-26 Term 1',
     career: 'Undergraduate',
@@ -22,6 +23,9 @@ export const mockCourses: Course[] = [
           name: 'Prof. CHAN Tai Man',
           department: 'CSE',
         },
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
         timeSlots: [
           {
             day: 'Monday',
@@ -43,6 +47,9 @@ export const mockCourses: Course[] = [
       {
         sectionId: 'T1',
         sectionType: 'Tutorial',
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
         timeSlots: [
           {
             day: 'Friday',
@@ -58,6 +65,9 @@ export const mockCourses: Course[] = [
       {
         sectionId: 'T2',
         sectionType: 'Tutorial',
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
         timeSlots: [
           {
             day: 'Friday',
@@ -78,7 +88,9 @@ export const mockCourses: Course[] = [
     courseName: 'Mathematical Analysis I',
     department: 'Mathematics',
     credits: 3,
-    description: 'Rigorous treatment of basic calculus. Topics include real numbers, sequences, limits, continuity, differentiation, and integration.',
+    description: 'Rigorous treatment of calculus of functions of one variable. Topics include real numbers, sequences and series, continuity, differentiation, and integration. This course emphasizes mathematical rigor and proof techniques, preparing students for advanced mathematics courses.',
+    enrollmentRequirements: 'Prerequisites: MATH1510 or consent of the instructor. Not for students who have taken MATH2010.',
+    prerequisites: ['MATH1510'],
     term: '2025-26 Term 1',
     career: 'Undergraduate',
     sections: [
@@ -89,6 +101,9 @@ export const mockCourses: Course[] = [
           name: 'Prof. WONG Siu Kei',
           department: 'MATH',
         },
+        language: 'English',
+        addConsent: true,
+        dropConsent: false,
         timeSlots: [
           {
             day: 'Tuesday',
@@ -113,9 +128,11 @@ export const mockCourses: Course[] = [
   {
     courseCode: 'ENGG2780',
     courseName: 'Statistics for Engineers',
-    department: 'Engineering',
+    department: 'Systems Engineering and Engineering Management',
     credits: 3,
-    description: 'Introduction to probability and statistics with engineering applications.',
+    description: 'Introduction to probability and statistics for engineering students. Topics include descriptive statistics, probability, random variables, sampling distributions, and hypothesis testing. Applications to engineering problems and data analysis using statistical software.',
+    enrollmentRequirements: 'For engineering students only. Not for students who have taken STAT2001 or STAT2011.',
+    prerequisites: [],
     term: '2025-26 Term 1',
     career: 'Undergraduate',
     sections: [
@@ -126,6 +143,9 @@ export const mockCourses: Course[] = [
           name: 'Prof. LEE Ming',
           department: 'ENGG',
         },
+        language: 'English',
+        addConsent: false,
+        dropConsent: true,
         timeSlots: [
           {
             day: 'Monday',
@@ -152,12 +172,16 @@ export const mockCourses: Course[] = [
     courseName: 'Data Explosion: from Big Bang to Big Data',
     department: 'General Education',
     credits: 3,
-    description: 'An introduction to the concept of data and its role in modern society.',
+    description: 'An introduction to the concept of data and its role in modern society. This course explores the evolution of data from the Big Bang to modern big data technologies, examining how data shapes our understanding of the universe and influences decision-making in contemporary society. Topics include data collection, analysis, visualization, and ethical considerations.',
+    enrollmentRequirements: 'For undergraduate students only. This course fulfills General Education requirements.',
     term: '2025-26 Term 1',
     career: 'Undergraduate',
     sections: [
       {
         sectionId: 'A',
+        language: 'Bilingual',
+        addConsent: false,
+        dropConsent: false,
         sectionType: 'Lecture',
         instructor: {
           name: 'Prof. CHEUNG Ka Lok',
@@ -183,7 +207,8 @@ export const mockCourses: Course[] = [
     courseName: 'Data Structures',
     department: 'Computer Science and Engineering',
     credits: 3,
-    description: 'Introduction to fundamental data structures and algorithms.',
+    description: 'Introduction to fundamental data structures and algorithms. This course covers arrays, linked lists, stacks, queues, trees, graphs, hash tables, and their applications. Students will learn algorithm analysis, complexity theory, and implement these structures in programming assignments.',
+    enrollmentRequirements: 'Prerequisites: CSCI1120 or equivalent programming experience. Not for students who have taken ESTR2102.',
     prerequisites: ['CSCI1120'],
     term: '2025-26 Term 1',
     career: 'Undergraduate',
@@ -195,6 +220,9 @@ export const mockCourses: Course[] = [
           name: 'Prof. LAM Yiu Sang',
           department: 'CSE',
         },
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
         timeSlots: [
           {
             day: 'Monday',
@@ -222,7 +250,8 @@ export const mockCourses: Course[] = [
     courseName: 'General Physics I',
     department: 'Physics',
     credits: 3,
-    description: 'Mechanics, heat, and waves.',
+    description: 'Mechanics, heat, and waves. This course covers fundamental principles of classical mechanics including kinematics, Newton\'s laws, energy, momentum, rotational motion, oscillations, and wave phenomena. Laboratory sessions provide hands-on experience with experimental techniques and data analysis.',
+    enrollmentRequirements: 'For science and engineering students. Co-requisite: MATH1010 or equivalent.',
     term: '2025-26 Term 1',
     career: 'Undergraduate',
     sections: [
@@ -233,6 +262,9 @@ export const mockCourses: Course[] = [
           name: 'Prof. CHENG Wing Tat',
           department: 'PHYS',
         },
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
         timeSlots: [
           {
             day: 'Tuesday',

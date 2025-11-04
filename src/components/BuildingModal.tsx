@@ -50,15 +50,15 @@ export function BuildingModal({ location, isOpen, onClose }: BuildingModalProps)
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/50 z-[9998] animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/50 dark:bg-black/70 z-[9998] animate-in fade-in duration-200"
         onClick={onClose}
       />
       
       {/* Modal */}
       <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-full max-w-2xl mx-4 animate-in zoom-in-95 fade-in duration-200">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="relative bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4 flex items-center justify-between">
+          <div className="relative bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-700 dark:to-purple-900 px-6 py-4 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-white">{fullLocation}</h2>
               <p className="text-purple-100 text-sm mt-1">Building Code: {buildingCode}</p>
@@ -75,7 +75,7 @@ export function BuildingModal({ location, isOpen, onClose }: BuildingModalProps)
           {/* Content */}
           <div className="p-6">
             {/* Building Image */}
-            <div className="mb-6 rounded-lg overflow-hidden border-2 border-gray-200">
+            <div className="mb-6 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600">
               <div 
                 style={buildingImageStyle}
                 className="w-full h-64 flex items-center justify-center text-white"
@@ -85,29 +85,29 @@ export function BuildingModal({ location, isOpen, onClose }: BuildingModalProps)
                   <div className="text-lg opacity-90">Building Photo Coming Soon</div>
                 </div>
               </div>
-              <div className="bg-gray-50 px-4 py-2 text-sm text-gray-600 text-center">
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 text-center">
                 📸 Real photos will be added in the next update
               </div>
             </div>
 
             {/* Location Info */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-purple-600" />
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 Location Details
               </h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Building Name:</span>
-                  <span className="font-medium text-gray-900">{fullLocation}</span>
+                  <span className="text-gray-600 dark:text-gray-400">Building Name:</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{fullLocation}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Building Code:</span>
-                  <span className="font-medium text-gray-900">{buildingCode}</span>
+                  <span className="text-gray-600 dark:text-gray-400">Building Code:</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{buildingCode}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Room:</span>
-                  <span className="font-medium text-gray-900">{location.split(' ').slice(1).join(' ') || 'N/A'}</span>
+                  <span className="text-gray-600 dark:text-gray-400">Room:</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{location.split(' ').slice(1).join(' ') || 'N/A'}</span>
                 </div>
               </div>
             </div>

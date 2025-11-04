@@ -48,6 +48,9 @@ export interface Section {
   enrolled: number; // Current enrollment
   seatsRemaining: number;
   waitlist?: number;
+  language?: 'English' | 'Chinese' | 'Bilingual'; // Teaching language (follows instructor)
+  addConsent?: boolean; // Whether add consent is required for this section
+  dropConsent?: boolean; // Whether drop consent is required for this section
 }
 
 /**
@@ -59,7 +62,8 @@ export interface Course {
   courseName: string; // e.g., "Software Engineering"
   department: string; // e.g., "Computer Science and Engineering"
   credits: number; // e.g., 3
-  description?: string;
+  description?: string; // Detailed course description
+  enrollmentRequirements?: string; // e.g., "Not for students who have taken ACCT2111"
   prerequisites?: string[];
   sections: Section[];
   term: string; // e.g., "2025-26 Term 1"

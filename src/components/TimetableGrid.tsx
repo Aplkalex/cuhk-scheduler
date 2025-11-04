@@ -48,7 +48,7 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse, 
   };
 
   return (
-    <div className="w-full bg-gray-50 rounded-lg shadow-lg overflow-hidden">
+    <div className="w-full bg-gray-50 dark:bg-[#252526] rounded-lg shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700">
       <div className="overflow-x-auto">
         <div className="min-w-[320px] sm:min-w-[600px] lg:min-w-0 p-2 sm:p-3 lg:p-4">
           {/* Header with days */}
@@ -57,9 +57,9 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse, 
             {displayDays.map((day) => (
               <div
                 key={day}
-                className="text-center font-semibold text-gray-700 py-1.5 sm:py-2 lg:py-3 bg-white rounded-md shadow-sm"
+                className="text-center font-semibold text-gray-700 dark:text-gray-200 py-1.5 sm:py-2 lg:py-3 bg-white dark:bg-[#2d2d30] rounded-md shadow-sm border border-gray-200 dark:border-gray-700"
               >
-                <div className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">{day.slice(0, 3)}</div>
+                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">{day.slice(0, 3)}</div>
                 <div className="text-xs sm:text-sm lg:text-base">{day}</div>
               </div>
             ))}
@@ -72,7 +72,7 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse, 
               {hours.map((hour) => (
                 <div
                   key={hour}
-                  className="text-right pr-1 sm:pr-2 lg:pr-3 text-[10px] sm:text-xs lg:text-sm text-gray-500 font-medium"
+                  className="text-right pr-1 sm:pr-2 lg:pr-3 text-[10px] sm:text-xs lg:text-sm text-gray-500 dark:text-gray-400 font-medium"
                   style={{ height: `${slotHeight}px`, lineHeight: `${slotHeight}px` }}
                 >
                   {formatTime(`${hour}:00`)}
@@ -84,14 +84,14 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse, 
           {displayDays.map((day) => (
             <div
               key={day}
-              className="relative bg-white rounded-lg border border-gray-200 overflow-hidden"
+              className="relative bg-white dark:bg-[#1e1e1e] rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
               style={{ height: `${slotHeight * hours.length}px` }}
             >
               {/* Hour grid lines */}
               {hours.slice(1).map((hour, idx) => (
                 <div
                   key={hour}
-                  className="absolute w-full border-t border-gray-100"
+                  className="absolute w-full border-t border-gray-100 dark:border-gray-800"
                   style={{ top: `${(idx + 1) * slotHeight}px` }}
                 />
               ))}
