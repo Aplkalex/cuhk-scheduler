@@ -31,18 +31,25 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse }
     const startOfDay = startHour * 60;
     
     const top = ((startMinutes - startOfDay) / 60) * slotHeight;
-    const height = ((endMinutes - startMinutes) / 60) * slotHeight;
+    const durationMinutes = endMinutes - startMinutes;
+    const calculatedHeight = (durationMinutes / 60) * slotHeight;
+    
+    // Use consistent gap for visual separation - blocks size naturally to content
+    const blockGap = 4;
+    // Let blocks be their natural size - no forced minimum to avoid overlaps
+    const finalHeight = calculatedHeight - blockGap;
+    const adjustedTop = top + blockGap / 2;
     
     return {
-      top: `${top}px`,
-      height: `${height - 4}px`, // Subtract 4px for gap
+      top: `${adjustedTop}px`,
+      height: `${finalHeight}px`,
       backgroundColor: color || '#8B5CF6',
     };
   };
 
   return (
     <div className="w-full overflow-auto bg-gray-50 rounded-xl shadow-lg p-4">
-      <div className="min-w-[800px]">
+      <div className="min-w-[900px]">
         {/* Header with days */}
         <div className="grid grid-cols-6 gap-2 mb-2">
           <div className="w-20" /> {/* Empty corner */}
@@ -76,7 +83,7 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse }
           {displayDays.map((day) => (
             <div
               key={day}
-              className="relative bg-white rounded-lg border border-gray-200"
+              className="relative bg-white rounded-lg border border-gray-200 overflow-hidden"
               style={{ height: `${slotHeight * hours.length}px` }}
             >
               {/* Hour grid lines */}
@@ -101,16 +108,20 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse }
                       <div
                         key={blockId}
                         className={cn(
-                          'absolute left-1 right-1 rounded-lg p-2 cursor-pointer group',
-                          'transition-all hover:shadow-xl hover:scale-[1.03]',
-                          'text-white text-xs overflow-visible'
+                          'absolute left-1 right-1 rounded-xl cursor-pointer group',
+                          'transition-all hover:shadow-xl hover:scale-[1.02]',
+                          'text-white flex flex-col',
+                          // Compact padding for small blocks, comfortable for larger ones
+                          'px-2.5 py-1.5',
+                          // Allow delete button to overflow outside the block
+                          'overflow-visible'
                         )}
                         style={style}
                         onClick={() => onCourseClick?.(selectedCourse)}
                         onMouseEnter={() => setHoveredCourse(blockId)}
                         onMouseLeave={() => setHoveredCourse(null)}
                       >
-                        {/* Delete button - shows on hover */}
+                        {/* Delete button - shows on hover, positioned OUTSIDE the block */}
                         {onRemoveCourse && (
                           <button
                             onClick={(e) => {
@@ -123,29 +134,32 @@ export function TimetableGrid({ selectedCourses, onCourseClick, onRemoveCourse }
                               'flex items-center justify-center shadow-lg',
                               'transition-all transform',
                               'opacity-0 group-hover:opacity-100 scale-0 group-hover:scale-100',
-                              'z-10'
+                              'z-[150]'
                             )}
                             title="Remove course"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         )}
 
-                        <div className="font-bold text-sm mb-1">
-                          {selectedCourse.course.courseCode}
-                        </div>
-                        <div className="text-xs opacity-90">
-                          {selectedCourse.selectedSection.sectionType} {selectedCourse.selectedSection.sectionId}
-                        </div>
-                        {slot.location && (
-                          <LocationTooltip location={slot.location}>
-                            <div className="text-xs opacity-75 mt-1 border-b border-white/30 border-dotted inline-block">
-                              {slot.location}
-                            </div>
-                          </LocationTooltip>
-                        )}
-                        <div className="text-xs opacity-75 mt-1">
-                          {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                        {/* Content wrapper with overflow hidden to prevent text overflow */}
+                        <div className="overflow-hidden flex flex-col">
+                          <div className="font-semibold text-xs leading-snug truncate">
+                            {selectedCourse.course.courseCode}
+                          </div>
+                          <div className="text-[11px] leading-snug opacity-90 truncate">
+                            {selectedCourse.selectedSection.sectionType.slice(0, 3)} {selectedCourse.selectedSection.sectionId}
+                          </div>
+                          {slot.location && (
+                            <LocationTooltip location={slot.location}>
+                              <div className="text-[11px] leading-snug opacity-80 border-b border-white/30 border-dotted inline-block truncate max-w-full">
+                                {slot.location}
+                              </div>
+                            </LocationTooltip>
+                          )}
+                          <div className="text-[11px] leading-snug opacity-75 truncate">
+                            {formatTime(slot.startTime)}-{formatTime(slot.endTime)}
+                          </div>
                         </div>
                       </div>
                     );
