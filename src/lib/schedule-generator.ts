@@ -36,7 +36,7 @@ export type GeneratedSchedule = {
   metadata?: ScheduleMetadata;
 };
 
-type ScheduleMetrics = {
+export type ScheduleMetrics = {
   totalGapMinutes: number;
   gapCount: number;
   maxGapMinutes: number;
@@ -756,104 +756,134 @@ function hasConflicts(schedule: SelectedCourse[]): boolean {
 // SCORING FUNCTIONS
 // ============================================================================
 
+const MINUTES_PER_DAY = 1440;
+
+const BASE_WEIGHTS = {
+  freeDays: 5_000_000,
+  dayUsagePenalty: 200_000,
+  totalGapPenalty: 8_000,
+  maxGapPenalty: 6_000,
+  campusSpanPenalty: 2_500,
+  longBreakMinutesPenalty: 5_000,
+  longBreakCountPenalty: 600_000,
+};
+
+function calculateBaseScore(metrics: ScheduleMetrics): number {
+  const freeDayScore = metrics.freeDays * BASE_WEIGHTS.freeDays;
+  const dayUsageScore = metrics.daysUsed * BASE_WEIGHTS.dayUsagePenalty;
+  const gapPenalty = metrics.totalGapMinutes * BASE_WEIGHTS.totalGapPenalty;
+  const longGapPenalty = metrics.maxGapMinutes * BASE_WEIGHTS.maxGapPenalty;
+  const campusSpanPenalty = metrics.totalCampusSpan * BASE_WEIGHTS.campusSpanPenalty;
+  const longBreakPenalty = metrics.totalLongBreakMinutes * BASE_WEIGHTS.longBreakMinutesPenalty;
+  const longBreakCountPenalty = metrics.longBreakCount * BASE_WEIGHTS.longBreakCountPenalty;
+
+  return (
+    freeDayScore
+    - dayUsageScore
+    - gapPenalty
+    - longGapPenalty
+    - campusSpanPenalty
+    - longBreakPenalty
+    - longBreakCountPenalty
+  );
+}
+
 /**
  * Calculates raw preference score using aggregated metrics.
  * Higher score should reflect better alignment with the desired preference.
  */
 function calculatePreferenceScore(metrics: ScheduleMetrics, preference: string | null): number {
+  const baseScore = calculateBaseScore(metrics);
+
   if (!preference) {
-    return metrics.freeDays * 1_000 - metrics.totalGapMinutes * 10;
+    return baseScore;
   }
 
   switch (preference) {
     case 'shortBreaks': {
-      const freeDayBoost = metrics.freeDays * 120_000;
-      const gapPenalty = metrics.totalGapMinutes * 1_000;
-      const maxGapPenalty = metrics.maxGapMinutes * 250;
-      const daySpanPenalty = metrics.totalCampusSpan * 120;
-      const earlyStartPenalty = Math.max(0, 600 - metrics.earliestStart) * 300;
+      const gapPenalty = metrics.totalGapMinutes * 10_000;
+      const maxGapPenalty = metrics.maxGapMinutes * 20_000;
+      const spanPenalty = metrics.totalCampusSpan * 4_000;
+      const earlyStartPenalty = Math.max(0, 600 - metrics.earliestStart) * 6_000;
       return (
-        freeDayBoost
+        baseScore
         - gapPenalty
         - maxGapPenalty
-        - daySpanPenalty
+        - spanPenalty
         - earlyStartPenalty
-        + metrics.avgStartTime * 150
+        + metrics.freeDays * 300_000
       );
     }
     case 'longBreaks': {
-      const longBreakReward = metrics.longBreakCount * 400_000 + metrics.totalLongBreakMinutes * 1_200;
-      const consolidationPenalty = metrics.totalGapMinutes * 400;
-      const spreadPenalty = metrics.totalCampusSpan * 80;
+      const neutralizedBase = baseScore
+        + metrics.totalGapMinutes * BASE_WEIGHTS.totalGapPenalty
+        + metrics.maxGapMinutes * BASE_WEIGHTS.maxGapPenalty
+        + metrics.totalCampusSpan * (BASE_WEIGHTS.campusSpanPenalty / 2)
+        + metrics.totalLongBreakMinutes * BASE_WEIGHTS.longBreakMinutesPenalty
+        + metrics.longBreakCount * BASE_WEIGHTS.longBreakCountPenalty;
+      const longBreakReward = metrics.totalLongBreakMinutes * 6_000;
+      const longBreakCountReward = metrics.longBreakCount * 600_000;
       return (
-        longBreakReward
-        - consolidationPenalty
-        - spreadPenalty
-        + metrics.freeDays * 50_000
+        neutralizedBase
+        + longBreakReward
+        + longBreakCountReward
+        + metrics.freeDays * 150_000
       );
     }
     case 'consistentStart': {
-      const variancePenalty = metrics.startVariance * 4_000;
-      const peakWindow = Math.abs(metrics.avgStartTime - 720) * 150; // prefer around noon start
-      const freeDayBoost = metrics.freeDays * 80_000;
-      const gapPenalty = metrics.totalGapMinutes * 300;
+      const variancePenalty = metrics.startVariance * 8_000;
+      const windowPenalty = Math.abs(metrics.avgStartTime - 780) * 4_000;
       return (
-        2_000_000
+        baseScore
         - variancePenalty
-        - peakWindow
-        - gapPenalty
-        - metrics.maxGapMinutes * 120
-        + freeDayBoost
+        - windowPenalty
+        + metrics.freeDays * 200_000
       );
     }
     case 'startLate': {
-      const lateStartReward = metrics.avgStartTime * 700 + metrics.earliestStart * 500;
-      const freeDayBoost = metrics.freeDays * 90_000;
-      const morningPenalty = Math.max(0, 660 - metrics.earliestStart) * 400;
+      const avgStartReward = Math.max(0, metrics.avgStartTime - 600) * 7_000;
+      const earliestStartReward = Math.max(0, metrics.earliestStart - 600) * 9_000;
+      const morningPenalty = Math.max(0, 720 - metrics.earliestStart) * 12_000;
       return (
-        lateStartReward
-        + freeDayBoost
-        - metrics.totalGapMinutes * 220
+        baseScore
+        + avgStartReward
+        + earliestStartReward
         - morningPenalty
-        - metrics.totalCampusSpan * 90
+        - metrics.totalCampusSpan * 2_000
       );
     }
     case 'endEarly': {
-      const earlyEndReward = (1440 - metrics.avgEndTime) * 500 + (1440 - metrics.latestEnd) * 500;
-      const finishBonus = Math.max(0, 1020 - metrics.latestEnd) * 800;
-      const freeDayBoost = metrics.freeDays * 120_000;
-      const extraDayPenalty = Math.max(0, metrics.daysUsed - 4) * 180_000;
-      const latestPenalty = Math.max(0, metrics.latestEnd - 1020) * 10_000;
-      const avgPenalty = Math.max(0, metrics.avgEndTime - 990) * 3_000;
-      const maxGapPenalty = Math.max(0, metrics.maxGapMinutes - 180) * 600;
+      const neutralizedBase = baseScore
+        + metrics.totalGapMinutes * BASE_WEIGHTS.totalGapPenalty
+        + metrics.maxGapMinutes * BASE_WEIGHTS.maxGapPenalty
+        + metrics.totalCampusSpan * BASE_WEIGHTS.campusSpanPenalty
+        + metrics.totalLongBreakMinutes * BASE_WEIGHTS.longBreakMinutesPenalty
+        + metrics.longBreakCount * BASE_WEIGHTS.longBreakCountPenalty;
+      const latestEndReward = (MINUTES_PER_DAY - metrics.latestEnd) * 8_000;
+      const avgEndReward = (MINUTES_PER_DAY - metrics.avgEndTime) * 6_000;
+      const cutoffReward = Math.max(0, 1020 - metrics.latestEnd) * 120_000;
+      const latePenalty = Math.max(0, metrics.latestEnd - 1020) * 200_000;
       return (
-        earlyEndReward
-        + finishBonus
-        + freeDayBoost
-        - metrics.totalGapMinutes * 180
-        - metrics.totalCampusSpan * 90
-        - latestPenalty
-        - avgPenalty
-        - maxGapPenalty
-        - extraDayPenalty
+        neutralizedBase
+        + latestEndReward
+        + avgEndReward
+        + cutoffReward
+        - latePenalty
+        - metrics.totalGapMinutes * 1_000
       );
     }
     case 'daysOff': {
-      const freeDayReward = metrics.freeDays * 1_200_000;
-      const dayUsagePenalty = metrics.daysUsed * 200_000;
-      const spreadPenalty = metrics.totalCampusSpan * 200;
-      const startPenalty = Math.max(0, 600 - metrics.earliestStart) * 200;
+      const freeDayBoost = metrics.freeDays * 4_000_000;
+      const dayUsagePenalty = Math.max(0, metrics.daysUsed - (5 - metrics.freeDays)) * 500_000;
       return (
-        freeDayReward
+        baseScore
+        + freeDayBoost
         - dayUsagePenalty
-        - spreadPenalty
-        - metrics.totalGapMinutes * 500
-        - startPenalty
-        + (1440 - metrics.avgEndTime) * 120
+        - metrics.totalGapMinutes * 2_000
       );
     }
     default:
-      return metrics.freeDays * 1_000 - metrics.totalGapMinutes * 10;
+      return baseScore;
   }
 }
 
@@ -900,97 +930,14 @@ function compareEvaluatedSchedules(
   const metricsA = a.metrics;
   const metricsB = b.metrics;
 
-  switch (preference) {
-    case 'daysOff':
-      if (metricsB.freeDays !== metricsA.freeDays) {
-        return metricsB.freeDays - metricsA.freeDays;
-      }
-      if (metricsA.daysUsed !== metricsB.daysUsed) {
-        return metricsA.daysUsed - metricsB.daysUsed;
-      }
-      if (metricsA.avgEndTime !== metricsB.avgEndTime) {
-        return metricsA.avgEndTime - metricsB.avgEndTime;
-      }
-      break;
-    case 'shortBreaks':
-      if (metricsA.totalGapMinutes !== metricsB.totalGapMinutes) {
-        return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
-      }
-      if (metricsA.maxGapMinutes !== metricsB.maxGapMinutes) {
-        return metricsA.maxGapMinutes - metricsB.maxGapMinutes;
-      }
-      if (metricsB.freeDays !== metricsA.freeDays) {
-        return metricsB.freeDays - metricsA.freeDays;
-      }
-      if (metricsB.avgStartTime !== metricsA.avgStartTime) {
-        return metricsB.avgStartTime - metricsA.avgStartTime;
-      }
-      break;
-    case 'longBreaks':
-      if (metricsB.totalLongBreakMinutes !== metricsA.totalLongBreakMinutes) {
-        return metricsB.totalLongBreakMinutes - metricsA.totalLongBreakMinutes;
-      }
-      if (metricsB.longBreakCount !== metricsA.longBreakCount) {
-        return metricsB.longBreakCount - metricsA.longBreakCount;
-      }
-      if (metricsB.freeDays !== metricsA.freeDays) {
-        return metricsB.freeDays - metricsA.freeDays;
-      }
-      break;
-    case 'consistentStart':
-      if (metricsA.startVariance !== metricsB.startVariance) {
-        return metricsA.startVariance - metricsB.startVariance;
-      }
-      if (metricsA.avgStartTime !== metricsB.avgStartTime) {
-        return metricsA.avgStartTime - metricsB.avgStartTime;
-      }
-      if (metricsB.freeDays !== metricsA.freeDays) {
-        return metricsB.freeDays - metricsA.freeDays;
-      }
-      break;
-    case 'startLate':
-      if (metricsB.avgStartTime !== metricsA.avgStartTime) {
-        return metricsB.avgStartTime - metricsA.avgStartTime;
-      }
-      if (metricsB.earliestStart !== metricsA.earliestStart) {
-        return metricsB.earliestStart - metricsA.earliestStart;
-      }
-      if (metricsB.freeDays !== metricsA.freeDays) {
-        return metricsB.freeDays - metricsA.freeDays;
-      }
-      break;
-    case 'endEarly':
-      if (metricsA.latestEnd !== metricsB.latestEnd) {
-        return metricsA.latestEnd - metricsB.latestEnd;
-      }
-      if (metricsA.avgEndTime !== metricsB.avgEndTime) {
-        return metricsA.avgEndTime - metricsB.avgEndTime;
-      }
-      if (metricsA.maxGapMinutes !== metricsB.maxGapMinutes) {
-        return metricsA.maxGapMinutes - metricsB.maxGapMinutes;
-      }
-      if (metricsB.freeDays !== metricsA.freeDays) {
-        return metricsB.freeDays - metricsA.freeDays;
-      }
-      break;
-    default:
-      break;
+  const preferenceTieBreak = compareByPreferenceMetrics(metricsA, metricsB, preference);
+  if (preferenceTieBreak !== 0) {
+    return preferenceTieBreak;
   }
 
-  if (metricsB.freeDays !== metricsA.freeDays) {
-    return metricsB.freeDays - metricsA.freeDays;
-  }
-
-  if (metricsA.totalGapMinutes !== metricsB.totalGapMinutes) {
-    return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
-  }
-
-  if (metricsA.daysUsed !== metricsB.daysUsed) {
-    return metricsA.daysUsed - metricsB.daysUsed;
-  }
-
-  if (metricsA.avgStartTime !== metricsB.avgStartTime) {
-    return metricsA.avgStartTime - metricsB.avgStartTime;
+  const universalTieBreak = compareUniversalPriorities(metricsA, metricsB, preference);
+  if (universalTieBreak !== 0) {
+    return universalTieBreak;
   }
 
   const fingerprintA = a.sections
@@ -1003,10 +950,145 @@ function compareEvaluatedSchedules(
   return fingerprintA.localeCompare(fingerprintB);
 }
 
+function compareByPreferenceMetrics(
+  metricsA: ScheduleMetrics,
+  metricsB: ScheduleMetrics,
+  preference: ScheduleGenerationOptions['preference']
+): number {
+  switch (preference) {
+    case 'daysOff': {
+      if (metricsB.freeDays !== metricsA.freeDays) {
+        return metricsB.freeDays - metricsA.freeDays;
+      }
+      if (metricsA.daysUsed !== metricsB.daysUsed) {
+        return metricsA.daysUsed - metricsB.daysUsed;
+      }
+      if (metricsA.totalGapMinutes !== metricsB.totalGapMinutes) {
+        return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
+      }
+      return metricsA.avgEndTime - metricsB.avgEndTime;
+    }
+    case 'shortBreaks': {
+      if (metricsA.totalGapMinutes !== metricsB.totalGapMinutes) {
+        return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
+      }
+      if (metricsA.maxGapMinutes !== metricsB.maxGapMinutes) {
+        return metricsA.maxGapMinutes - metricsB.maxGapMinutes;
+      }
+      return metricsA.totalCampusSpan - metricsB.totalCampusSpan;
+    }
+    case 'longBreaks': {
+      if (metricsB.totalLongBreakMinutes !== metricsA.totalLongBreakMinutes) {
+        return metricsB.totalLongBreakMinutes - metricsA.totalLongBreakMinutes;
+      }
+      if (metricsB.longBreakCount !== metricsA.longBreakCount) {
+        return metricsB.longBreakCount - metricsA.longBreakCount;
+      }
+      return metricsB.totalGapMinutes - metricsA.totalGapMinutes;
+    }
+    case 'consistentStart': {
+      if (metricsA.startVariance !== metricsB.startVariance) {
+        return metricsA.startVariance - metricsB.startVariance;
+      }
+      if (metricsA.avgStartTime !== metricsB.avgStartTime) {
+        return metricsA.avgStartTime - metricsB.avgStartTime;
+      }
+      return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
+    }
+    case 'startLate': {
+      if (metricsB.earliestStart !== metricsA.earliestStart) {
+        return metricsB.earliestStart - metricsA.earliestStart;
+      }
+      if (metricsB.avgStartTime !== metricsA.avgStartTime) {
+        return metricsB.avgStartTime - metricsA.avgStartTime;
+      }
+      return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
+    }
+    case 'endEarly': {
+      if (metricsA.latestEnd !== metricsB.latestEnd) {
+        return metricsA.latestEnd - metricsB.latestEnd;
+      }
+      if (metricsA.avgEndTime !== metricsB.avgEndTime) {
+        return metricsA.avgEndTime - metricsB.avgEndTime;
+      }
+      return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
+    }
+    default:
+      return 0;
+  }
+}
+
+function compareUniversalPriorities(
+  metricsA: ScheduleMetrics,
+  metricsB: ScheduleMetrics,
+  preference: ScheduleGenerationOptions['preference']
+): number {
+  if (metricsB.freeDays !== metricsA.freeDays) {
+    return metricsB.freeDays - metricsA.freeDays;
+  }
+
+  if (preference === 'longBreaks') {
+    if (metricsB.longBreakCount !== metricsA.longBreakCount) {
+      return metricsB.longBreakCount - metricsA.longBreakCount;
+    }
+    if (metricsB.totalLongBreakMinutes !== metricsA.totalLongBreakMinutes) {
+      return metricsB.totalLongBreakMinutes - metricsA.totalLongBreakMinutes;
+    }
+    if (metricsB.totalGapMinutes !== metricsA.totalGapMinutes) {
+      return metricsB.totalGapMinutes - metricsA.totalGapMinutes;
+    }
+    if (metricsB.totalCampusSpan !== metricsA.totalCampusSpan) {
+      return metricsB.totalCampusSpan - metricsA.totalCampusSpan;
+    }
+  } else {
+    if (metricsA.longBreakCount !== metricsB.longBreakCount) {
+      return metricsA.longBreakCount - metricsB.longBreakCount;
+    }
+    if (metricsA.totalLongBreakMinutes !== metricsB.totalLongBreakMinutes) {
+      return metricsA.totalLongBreakMinutes - metricsB.totalLongBreakMinutes;
+    }
+    if (metricsA.maxGapMinutes !== metricsB.maxGapMinutes) {
+      return metricsA.maxGapMinutes - metricsB.maxGapMinutes;
+    }
+    if (metricsA.totalGapMinutes !== metricsB.totalGapMinutes) {
+      return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
+    }
+    if (metricsA.totalCampusSpan !== metricsB.totalCampusSpan) {
+      return metricsA.totalCampusSpan - metricsB.totalCampusSpan;
+    }
+  }
+
+  if (metricsB.earliestStart !== metricsA.earliestStart) {
+    return metricsB.earliestStart - metricsA.earliestStart;
+  }
+
+  if (metricsA.latestEnd !== metricsB.latestEnd) {
+    return metricsA.latestEnd - metricsB.latestEnd;
+  }
+
+  if (metricsA.startVariance !== metricsB.startVariance) {
+    return metricsA.startVariance - metricsB.startVariance;
+  }
+
+  if (metricsB.avgStartTime !== metricsA.avgStartTime) {
+    return metricsB.avgStartTime - metricsA.avgStartTime;
+  }
+
+  if (metricsA.avgEndTime !== metricsB.avgEndTime) {
+    return metricsA.avgEndTime - metricsB.avgEndTime;
+  }
+
+  if (metricsA.gapCount !== metricsB.gapCount) {
+    return metricsA.gapCount - metricsB.gapCount;
+  }
+
+  return 0;
+}
+
 /**
  * Calculate aggregated metrics required for ranking schedules
  */
-function calculateScheduleMetrics(schedule: SelectedCourse[]): ScheduleMetrics {
+export function calculateScheduleMetrics(schedule: SelectedCourse[]): ScheduleMetrics {
   const daySchedules = groupByDay(schedule);
   let totalGapMinutes = 0;
   let gapCount = 0;
