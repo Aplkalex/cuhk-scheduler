@@ -597,3 +597,344 @@ function getUniqueDays(sections: SelectedCourse[]): string[] {
   });
   return Array.from(days);
 }
+
+// ============================================================================
+// COMPLEX COURSES TESTS (LEC + TUT + LAB)
+// ============================================================================
+
+describe('Complex Courses with Multiple Section Types', () => {
+  
+  const complexCourse: Course = {
+    courseCode: 'CSCI3100',
+    courseName: 'Software Engineering',
+    department: 'Computer Science and Engineering',
+    credits: 3,
+    description: 'Complex course with LEC + TUT + LAB',
+    enrollmentRequirements: 'None',
+    prerequisites: [],
+    term: '2025-26-T1',
+    career: 'Undergraduate',
+    sections: [
+      // Lecture A
+      {
+        sectionId: 'A',
+        sectionType: 'Lecture',
+        classNumber: 3100,
+        instructor: { name: 'Prof. Smith', department: 'CSE' },
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
+        timeSlots: [
+          { day: 'Monday', startTime: '09:30', endTime: '11:15', location: 'LSB LT1' }
+        ],
+        quota: 100,
+        enrolled: 80,
+        seatsRemaining: 20,
+      },
+      // Lecture B
+      {
+        sectionId: 'B',
+        sectionType: 'Lecture',
+        classNumber: 3101,
+        instructor: { name: 'Prof. Jones', department: 'CSE' },
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
+        timeSlots: [
+          { day: 'Tuesday', startTime: '09:30', endTime: '11:15', location: 'LSB LT2' }
+        ],
+        quota: 100,
+        enrolled: 75,
+        seatsRemaining: 25,
+      },
+      // Tutorial 1 for Lecture A
+      {
+        sectionId: 'AT1',
+        sectionType: 'Tutorial',
+        parentLecture: 'A',
+        classNumber: 3102,
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
+        timeSlots: [
+          { day: 'Wednesday', startTime: '14:30', endTime: '15:15', location: 'SHB 910' }
+        ],
+        quota: 50,
+        enrolled: 40,
+        seatsRemaining: 10,
+      },
+      // Tutorial 2 for Lecture A
+      {
+        sectionId: 'AT2',
+        sectionType: 'Tutorial',
+        parentLecture: 'A',
+        classNumber: 3103,
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
+        timeSlots: [
+          { day: 'Thursday', startTime: '14:30', endTime: '15:15', location: 'SHB 911' }
+        ],
+        quota: 50,
+        enrolled: 40,
+        seatsRemaining: 10,
+      },
+      // Tutorial 1 for Lecture B
+      {
+        sectionId: 'BT1',
+        sectionType: 'Tutorial',
+        parentLecture: 'B',
+        classNumber: 3104,
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
+        timeSlots: [
+          { day: 'Wednesday', startTime: '15:30', endTime: '16:15', location: 'SHB 920' }
+        ],
+        quota: 75,
+        enrolled: 65,
+        seatsRemaining: 10,
+      },
+      // Lab 1 for Lecture A
+      {
+        sectionId: 'AL1',
+        sectionType: 'Lab',
+        parentLecture: 'A',
+        classNumber: 3105,
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
+        timeSlots: [
+          { day: 'Friday', startTime: '09:30', endTime: '11:15', location: 'SHB Lab' }
+        ],
+        quota: 50,
+        enrolled: 40,
+        seatsRemaining: 10,
+      },
+      // Lab 2 for Lecture A
+      {
+        sectionId: 'AL2',
+        sectionType: 'Lab',
+        parentLecture: 'A',
+        classNumber: 3106,
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
+        timeSlots: [
+          { day: 'Friday', startTime: '14:30', endTime: '16:15', location: 'SHB Lab' }
+        ],
+        quota: 50,
+        enrolled: 40,
+        seatsRemaining: 10,
+      },
+      // Lab 1 for Lecture B
+      {
+        sectionId: 'BL1',
+        sectionType: 'Lab',
+        parentLecture: 'B',
+        classNumber: 3107,
+        language: 'English',
+        addConsent: false,
+        dropConsent: false,
+        timeSlots: [
+          { day: 'Friday', startTime: '11:30', endTime: '13:15', location: 'SHB Lab' }
+        ],
+        quota: 75,
+        enrolled: 65,
+        seatsRemaining: 10,
+      }
+    ],
+    lastUpdated: new Date('2025-11-01'),
+  };
+
+  test('6.1: Course with LEC + TUT + LAB generates correct number of combinations', () => {
+    const courses: Course[] = [complexCourse];
+    const options: ScheduleGenerationOptions = {
+      preference: null,
+    };
+
+    const schedules = generateSchedules(courses, options);
+
+    // Expected combinations:
+    // Lecture A: 2 tutorials × 2 labs = 4 combinations
+    // Lecture B: 1 tutorial × 1 lab = 1 combination
+    // Total: 5 valid schedules
+    expect(schedules.length).toBe(5);
+  });
+
+  test('6.2: Each schedule contains all required section types', () => {
+    const courses: Course[] = [complexCourse];
+    const options: ScheduleGenerationOptions = {
+      preference: null,
+    };
+
+    const schedules = generateSchedules(courses, options);
+
+    schedules.forEach((schedule: GeneratedSchedule) => {
+      // Each schedule should have lecture + tutorial + lab = 3 sections
+      expect(schedule.sections.length).toBe(3);
+      
+      const sectionTypes = schedule.sections.map((s: SelectedCourse) => s.selectedSection.sectionType);
+      expect(sectionTypes).toContain('Lecture');
+      expect(sectionTypes).toContain('Tutorial');
+      expect(sectionTypes).toContain('Lab');
+    });
+  });
+
+  test('6.3: Parent-child relationships are correctly maintained', () => {
+    const courses: Course[] = [complexCourse];
+    const options: ScheduleGenerationOptions = {
+      preference: null,
+    };
+
+    const schedules = generateSchedules(courses, options);
+
+    schedules.forEach((schedule: GeneratedSchedule) => {
+      const lecture = schedule.sections.find((s: SelectedCourse) => s.selectedSection.sectionType === 'Lecture');
+      const tutorial = schedule.sections.find((s: SelectedCourse) => s.selectedSection.sectionType === 'Tutorial');
+      const lab = schedule.sections.find((s: SelectedCourse) => s.selectedSection.sectionType === 'Lab');
+
+      expect(lecture).toBeDefined();
+      expect(tutorial).toBeDefined();
+      expect(lab).toBeDefined();
+
+      // Tutorial and Lab must belong to the same lecture
+      expect(tutorial?.selectedSection.parentLecture).toBe(lecture?.selectedSection.sectionId);
+      expect(lab?.selectedSection.parentLecture).toBe(lecture?.selectedSection.sectionId);
+    });
+  });
+
+  test('6.4: Lecture A combinations are generated correctly', () => {
+    const courses: Course[] = [complexCourse];
+    const options: ScheduleGenerationOptions = {
+      preference: null,
+    };
+
+    const schedules = generateSchedules(courses, options);
+
+    // Filter schedules with Lecture A
+    const lectureASchedules = schedules.filter((s: GeneratedSchedule) => {
+      const lecture = s.sections.find((sec: SelectedCourse) => sec.selectedSection.sectionType === 'Lecture');
+      return lecture?.selectedSection.sectionId === 'A';
+    });
+
+    // Should have 4 combinations: AT1+AL1, AT1+AL2, AT2+AL1, AT2+AL2
+    expect(lectureASchedules.length).toBe(4);
+
+    // Check that all combinations exist
+    const combinations = lectureASchedules.map((s: GeneratedSchedule) => {
+      const tutorial = s.sections.find((sec: SelectedCourse) => sec.selectedSection.sectionType === 'Tutorial');
+      const lab = s.sections.find((sec: SelectedCourse) => sec.selectedSection.sectionType === 'Lab');
+      return `${tutorial?.selectedSection.sectionId}+${lab?.selectedSection.sectionId}`;
+    });
+
+    expect(combinations).toContain('AT1+AL1');
+    expect(combinations).toContain('AT1+AL2');
+    expect(combinations).toContain('AT2+AL1');
+    expect(combinations).toContain('AT2+AL2');
+  });
+
+  test('6.5: Lecture B combinations are generated correctly', () => {
+    const courses: Course[] = [complexCourse];
+    const options: ScheduleGenerationOptions = {
+      preference: null,
+    };
+
+    const schedules = generateSchedules(courses, options);
+
+    // Filter schedules with Lecture B
+    const lectureBSchedules = schedules.filter((s: GeneratedSchedule) => {
+      const lecture = s.sections.find((sec: SelectedCourse) => sec.selectedSection.sectionType === 'Lecture');
+      return lecture?.selectedSection.sectionId === 'B';
+    });
+
+    // Should have 1 combination: BT1+BL1
+    expect(lectureBSchedules.length).toBe(1);
+
+    const schedule = lectureBSchedules[0];
+    const tutorial = schedule.sections.find((s: SelectedCourse) => s.selectedSection.sectionType === 'Tutorial');
+    const lab = schedule.sections.find((s: SelectedCourse) => s.selectedSection.sectionType === 'Lab');
+
+    expect(tutorial?.selectedSection.sectionId).toBe('BT1');
+    expect(lab?.selectedSection.sectionId).toBe('BL1');
+  });
+
+  test('6.6: Universal sections (parentLecture undefined) pair with all lectures', () => {
+    const courseWithUniversal: Course = {
+      ...complexCourse,
+      courseCode: 'CSCI2100',
+      sections: [
+        // Lecture A
+        {
+          sectionId: 'A',
+          sectionType: 'Lecture',
+          classNumber: 2100,
+          instructor: { name: 'Prof. Zhang', department: 'CSE' },
+          language: 'English',
+          addConsent: false,
+          dropConsent: false,
+          timeSlots: [
+            { day: 'Monday', startTime: '11:30', endTime: '13:15', location: 'LSB LT5' }
+          ],
+          quota: 100,
+          enrolled: 80,
+          seatsRemaining: 20,
+        },
+        // Lecture B
+        {
+          sectionId: 'B',
+          sectionType: 'Lecture',
+          classNumber: 2101,
+          instructor: { name: 'Prof. Li', department: 'CSE' },
+          language: 'English',
+          addConsent: false,
+          dropConsent: false,
+          timeSlots: [
+            { day: 'Tuesday', startTime: '11:30', endTime: '13:15', location: 'LSB LT6' }
+          ],
+          quota: 100,
+          enrolled: 75,
+          seatsRemaining: 25,
+        },
+        // Universal lab - can pair with any lecture
+        {
+          sectionId: 'L1',
+          sectionType: 'Lab',
+          parentLecture: undefined, // Universal section
+          classNumber: 2102,
+          language: 'English',
+          addConsent: false,
+          dropConsent: false,
+          timeSlots: [
+            { day: 'Friday', startTime: '14:30', endTime: '16:15', location: 'Lab A' }
+          ],
+          quota: 200,
+          enrolled: 155,
+          seatsRemaining: 45,
+        }
+      ],
+      lastUpdated: new Date('2025-11-01'),
+    };
+
+    const courses: Course[] = [courseWithUniversal];
+    const options: ScheduleGenerationOptions = {
+      preference: null,
+    };
+
+    const schedules = generateSchedules(courses, options);
+
+    // 2 lectures × 1 universal lab = 2 combinations
+    expect(schedules.length).toBe(2);
+
+    schedules.forEach((schedule: GeneratedSchedule) => {
+      expect(schedule.sections.length).toBe(2); // Lecture + Lab
+      
+      const lecture = schedule.sections.find((s: SelectedCourse) => s.selectedSection.sectionType === 'Lecture');
+      const lab = schedule.sections.find((s: SelectedCourse) => s.selectedSection.sectionType === 'Lab');
+      
+      expect(lecture).toBeDefined();
+      expect(lab).toBeDefined();
+      expect(lab?.selectedSection.sectionId).toBe('L1');
+    });
+  });
+});

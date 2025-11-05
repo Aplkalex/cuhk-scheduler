@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, memo } from 'react';
+import { useState, memo, useTransition } from 'react';
 import { SelectedCourse, DayOfWeek } from '@/types';
 import { TIMETABLE_CONFIG, WEEKDAYS } from '@/lib/constants';
 import { timeToMinutes, formatTime, hasAvailableSeats } from '@/lib/schedule-utils';
@@ -25,6 +25,7 @@ interface TimetableGridProps {
   onSwapTutorials?: (courseCode: string, fromTutorialId: string, toTutorialId: string) => void;
   enableDragDrop?: boolean; // Enable drag & drop functionality
   availableCourses?: any[]; // All available courses for showing alternatives
+  onSwapWarning?: (message: string, type: 'full' | 'conflict') => void; // Callback for swap warnings
 }
 
 export function TimetableGrid({ 
@@ -37,9 +38,12 @@ export function TimetableGrid({
   onSwapTutorials,
   enableDragDrop = false,
   availableCourses = [],
+  onSwapWarning,
 }: TimetableGridProps) {
   const [hoveredCourse, setHoveredCourse] = useState<string | null>(null);
   const [draggedCourse, setDraggedCourse] = useState<SelectedCourse | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [isSwapping, setIsSwapping] = useState(false); // Track if we're in the middle of a swap
   const { startHour, endHour, slotHeight } = TIMETABLE_CONFIG;
   
   // Generate hours array (8 AM to 9 PM)
@@ -98,87 +102,136 @@ export function TimetableGrid({
     const draggedSection = draggedCourse.selectedSection;
     const targetSection = targetCourse.selectedSection;
 
-    // Lecture swap
-    if (draggedSection.sectionType === 'Lecture' && targetSection.sectionType === 'Lecture') {
-      if (onSwapLectures) {
-        onSwapLectures(
-          draggedCourse.course.courseCode,
-          draggedSection.sectionId,
-          targetSection.sectionId
-        );
-      }
+    // Check if target section is full
+    const isTargetFull = !hasAvailableSeats(targetSection);
+    
+    // Check if swapping would cause conflicts
+    const wouldCauseConflict = selectedCourses.some(selected => {
+      if (selected === draggedCourse || selected === targetCourse) return false;
+      
+      return selected.selectedSection.timeSlots.some(slot1 =>
+        targetSection.timeSlots.some(slot2 =>
+          slot1.day === slot2.day &&
+          timeToMinutes(slot1.startTime) < timeToMinutes(slot2.endTime) &&
+          timeToMinutes(slot2.startTime) < timeToMinutes(slot1.endTime)
+        )
+      );
+    });
+
+    // Show warnings if needed
+    if (isTargetFull && onSwapWarning) {
+      onSwapWarning(
+        `${targetCourse.course.courseCode} - ${targetSection.sectionType} ${targetSection.sectionId} has no available seats.`,
+        'full'
+      );
     }
-    // Tutorial swap (only if same parent lecture)
-    else if (draggedSection.sectionType === 'Tutorial' && targetSection.sectionType === 'Tutorial') {
-      if (isSameCourse && draggedSection.parentLecture === targetSection.parentLecture) {
-        if (onSwapTutorials) {
-          onSwapTutorials(
+    
+    if (wouldCauseConflict && onSwapWarning) {
+      onSwapWarning(
+        `Swapping to ${targetCourse.course.courseCode} - ${targetSection.sectionType} ${targetSection.sectionId} would cause a schedule conflict.`,
+        'conflict'
+      );
+    }
+
+    // Clear draggedCourse immediately to hide ghost blocks
+    setDraggedCourse(null);
+
+    // Set swapping flag to suppress animations
+    setIsSwapping(true);
+
+    // Proceed with swap regardless of warnings (user can decide)
+    // Use startTransition for the swap to make it non-blocking
+    startTransition(() => {
+      // Lecture swap
+      if (draggedSection.sectionType === 'Lecture' && targetSection.sectionType === 'Lecture') {
+        if (onSwapLectures) {
+          onSwapLectures(
             draggedCourse.course.courseCode,
             draggedSection.sectionId,
             targetSection.sectionId
           );
         }
       }
-    }
+      // Tutorial swap (only if same parent lecture)
+      else if (draggedSection.sectionType === 'Tutorial' && targetSection.sectionType === 'Tutorial') {
+        if (isSameCourse && draggedSection.parentLecture === targetSection.parentLecture) {
+          if (onSwapTutorials) {
+            onSwapTutorials(
+              draggedCourse.course.courseCode,
+              draggedSection.sectionId,
+              targetSection.sectionId
+            );
+          }
+        }
+      }
 
-    setDraggedCourse(null);
+      // Clear swapping flag after a brief delay to allow the swap to complete
+      setTimeout(() => setIsSwapping(false), 0);
+    });
   };
 
   const handleDragCancel = () => {
     setDraggedCourse(null);
   };
 
-  // Ghost Lecture Block Component (appears when dragging a lecture)
-  const GhostLectureBlock = memo(({ 
-    lecture, 
+  // Ghost Section Block Component (appears when dragging a lecture or tutorial)
+  const GhostSectionBlock = memo(({ 
+    section, 
     slot, 
     day,
     courseCode,
     color,
     getCourseStyle,
   }: { 
-    lecture: any; 
+    section: any; 
     slot: any; 
     day: string;
     courseCode: string;
     color: string;
     getCourseStyle: (startTime: string, endTime: string, color?: string) => any;
   }) => {
-    const ghostId = `ghost-${courseCode}-${lecture.sectionId}-${slot.day}-${slot.startTime}`;
+    const ghostId = `ghost-${courseCode}-${section.sectionId}-${slot.day}-${slot.startTime}`;
     
     const { setNodeRef, isOver } = useDroppable({
       id: ghostId,
       data: { 
         course: { 
           course: { courseCode }, 
-          selectedSection: lecture,
+          selectedSection: section,
           color,
         } 
       },
     });
 
     const style = getCourseStyle(slot.startTime, slot.endTime, color);
+    
+    // Extract RGB values from the color for the border/background
+    const colorWithOpacity = color || '#8B5CF6';
 
     return (
       <div
         ref={setNodeRef}
         className={cn(
           'absolute left-1 right-1 rounded-lg border-2 border-dashed',
-          'transition-all duration-200',
           'pointer-events-auto cursor-pointer',
           'flex flex-col items-center justify-center',
           'px-1.5 py-1',
-          isOver && 'border-yellow-400 bg-yellow-400/40 scale-[1.03] shadow-xl ring-2 ring-yellow-400/50',
-          !isOver && 'border-purple-400/60 bg-purple-400/10 hover:bg-purple-400/20'
+          isOver && 'border-yellow-400 bg-yellow-400/40 scale-[1.03] shadow-xl ring-2 ring-yellow-400/50 transition-all duration-200',
         )}
-        style={style}
+        style={{
+          ...style,
+          ...((!isOver) && {
+            borderColor: `${colorWithOpacity}99`,
+            backgroundColor: `${colorWithOpacity}1A`,
+          }),
+        }}
       >
-        <div className="text-xs font-bold text-purple-900 dark:text-purple-100 text-center">
-          LEC {lecture.sectionId}
+        <div className="text-xs font-bold text-gray-900 dark:text-white text-center">
+          {section.sectionType === 'Lecture' ? 'LEC' : section.sectionType.toUpperCase()} {section.sectionId}
         </div>
-        {lecture.instructor && (
-          <div className="text-[9px] text-purple-800 dark:text-purple-200 text-center truncate max-w-full">
-            {lecture.instructor.name.split(' ').slice(-2).join(' ')}
+        {section.instructor && (
+          <div className="text-[9px] text-gray-700 dark:text-gray-300 text-center truncate max-w-full">
+            {section.instructor.name.split(' ').slice(-2).join(' ')}
           </div>
         )}
         {isOver && (
@@ -198,6 +251,7 @@ export function TimetableGrid({
     day, 
     slot,
     isDraggedCourse,
+    isSwapping: isSwappingProp,
   }: { 
     selectedCourse: SelectedCourse; 
     blockId: string; 
@@ -205,6 +259,7 @@ export function TimetableGrid({
     day: DayOfWeek; 
     slot: any;
     isDraggedCourse: boolean;
+    isSwapping: boolean;
   }) => {
     const [isLocalHovered, setIsLocalHovered] = useState(false);
     const uniqueId = `${selectedCourse.course.courseCode}-${selectedCourse.selectedSection.sectionId}-${blockId}`;
@@ -273,7 +328,7 @@ export function TimetableGrid({
         {...listeners}
         className={cn(
           'absolute left-1 right-1 rounded-lg cursor-pointer group',
-          'timetable-block-enter',
+          !isSwappingProp && 'timetable-block-enter',
           'hover:shadow-xl hover:scale-[1.02]',
           'text-white flex flex-col',
           'px-1.5 py-1',
@@ -287,7 +342,7 @@ export function TimetableGrid({
         )}
         style={{
           ...style,
-          transition: isDragging ? 'opacity 0.2s' : 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease',
+          transition: isSwappingProp ? 'none' : isDragging ? 'opacity 0.2s' : 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease',
         }}
         onMouseEnter={() => setIsLocalHovered(true)}
         onMouseLeave={() => setIsLocalHovered(false)}
@@ -415,27 +470,41 @@ export function TimetableGrid({
                         day={day}
                         slot={slot}
                         isDraggedCourse={draggedCourse === selectedCourse}
+                        isSwapping={isSwapping}
                       />
                     );
                   })
               )}
 
-              {/* Ghost blocks for alternative lectures when dragging */}
-              {draggedCourse && draggedCourse.selectedSection.sectionType === 'Lecture' && (() => {
+              {/* Ghost blocks for alternative sections when dragging */}
+              {draggedCourse && (() => {
                 const courseData = availableCourses.find(c => c.courseCode === draggedCourse.course.courseCode);
                 if (!courseData) return null;
 
-                const alternativeLectures = courseData.sections.filter(
-                  (s: any) => s.sectionType === 'Lecture' && s.sectionId !== draggedCourse.selectedSection.sectionId
-                );
+                let alternativeSections: any[] = [];
 
-                return alternativeLectures.flatMap((lecture: any) =>
-                  lecture.timeSlots
+                if (draggedCourse.selectedSection.sectionType === 'Lecture') {
+                  // Show alternative lectures
+                  alternativeSections = courseData.sections.filter(
+                    (s: any) => s.sectionType === 'Lecture' && s.sectionId !== draggedCourse.selectedSection.sectionId
+                  );
+                } else if (draggedCourse.selectedSection.sectionType === 'Tutorial') {
+                  // Show alternative tutorials with same parent lecture
+                  alternativeSections = courseData.sections.filter(
+                    (s: any) => 
+                      s.sectionType === 'Tutorial' && 
+                      s.parentLecture === draggedCourse.selectedSection.parentLecture &&
+                      s.sectionId !== draggedCourse.selectedSection.sectionId
+                  );
+                }
+
+                return alternativeSections.flatMap((section: any) =>
+                  section.timeSlots
                     .filter((slot: any) => slot.day === day)
                     .map((slot: any, idx: number) => (
-                      <GhostLectureBlock
-                        key={`ghost-${lecture.sectionId}-${idx}-${day}`}
-                        lecture={lecture}
+                      <GhostSectionBlock
+                        key={`ghost-${section.sectionId}-${idx}-${day}`}
+                        section={section}
                         slot={slot}
                         day={day}
                         courseCode={draggedCourse.course.courseCode}
@@ -464,9 +533,15 @@ export function TimetableGrid({
         >
           {content}
           
-          <DragOverlay>
+          <DragOverlay dropAnimation={null}>
             {draggedCourse && (
-              <div className="bg-purple-500 text-white p-2 rounded-lg shadow-xl opacity-90">
+              <div 
+                className="text-white p-2 rounded-lg shadow-xl opacity-90"
+                style={{ 
+                  backgroundColor: draggedCourse.color || '#8B5CF6',
+                  transition: 'none',
+                }}
+              >
                 <div className="font-bold">{draggedCourse.course.courseCode}</div>
                 <div className="text-xs">
                   {draggedCourse.selectedSection.sectionType} {draggedCourse.selectedSection.sectionId}
@@ -481,3 +556,6 @@ export function TimetableGrid({
 
   return content;
 }
+
+// Memoize TimetableGrid to prevent re-renders when parent state changes (e.g., search query)
+export default memo(TimetableGrid);

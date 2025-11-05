@@ -31,6 +31,63 @@ export type ScheduleGenerationOptions = {
 };
 
 // ============================================================================
+// VALIDATION
+// ============================================================================
+
+/**
+ * Validates course data to catch issues early
+ * Logs warnings for invalid data but doesn't throw errors
+ */
+function validateCourses(courses: Course[]): void {
+  for (const course of courses) {
+    // Check if course has sections
+    if (!course.sections || course.sections.length === 0) {
+      console.warn(`Course ${course.courseCode} has no sections`);
+      continue;
+    }
+
+    // Check if course has at least one lecture
+    const lectures = course.sections.filter(s => s.sectionType === 'Lecture');
+    if (lectures.length === 0) {
+      console.warn(`Course ${course.courseCode} has no lecture sections`);
+    }
+
+    // Validate each section
+    for (const section of course.sections) {
+      // Check for empty time slots
+      if (!section.timeSlots || section.timeSlots.length === 0) {
+        console.warn(
+          `Course ${course.courseCode}, Section ${section.sectionId} (${section.sectionType}) has no time slots`
+        );
+      }
+
+      // Validate parentLecture references
+      if (section.parentLecture !== undefined && section.sectionType !== 'Lecture') {
+        const parentExists = course.sections.some(
+          s => s.sectionType === 'Lecture' && s.sectionId === section.parentLecture
+        );
+        if (!parentExists) {
+          console.warn(
+            `Course ${course.courseCode}, Section ${section.sectionId} (${section.sectionType}) ` +
+            `references non-existent parent lecture: ${section.parentLecture}`
+          );
+        }
+      }
+
+      // Validate time slot format
+      for (const slot of section.timeSlots) {
+        if (!slot.day || !slot.startTime || !slot.endTime) {
+          console.warn(
+            `Course ${course.courseCode}, Section ${section.sectionId} has invalid time slot:`,
+            slot
+          );
+        }
+      }
+    }
+  }
+}
+
+// ============================================================================
 // MAIN GENERATION FUNCTION
 // ============================================================================
 
@@ -48,6 +105,9 @@ export function generateSchedules(
   if (!courses || courses.length === 0) {
     return [];
   }
+
+  // Validate course data
+  validateCourses(courses);
 
   const maxResults = options.maxResults || 100;
 
@@ -86,40 +146,89 @@ export function generateSchedules(
 
 /**
  * Generates all possible combinations of sections across courses
- * For each course, we need to select one lecture section and ONE tutorial/lab per lecture
+ * For each course, we need to select one lecture and ALL required sections (tutorials, labs, etc.)
+ * 
+ * Supports complex courses with multiple section types:
+ * - Lecture only: [LEC A]
+ * - Lecture + Tutorial: [LEC A + TUT 1], [LEC A + TUT 2], etc.
+ * - Lecture + Tutorial + Lab: [LEC A + TUT 1 + LAB 1], [LEC A + TUT 1 + LAB 2], etc.
  */
 function generateAllCombinations(courses: Course[]): SelectedCourse[][] {
   // For each course, get all possible section combinations (lecture + required sections)
   const sectionCombinationsByCourse = courses.map(course => {
     const lectures = course.sections.filter(section => section.sectionType === 'Lecture');
+    
+    // If no lectures, skip this course (invalid course data)
+    if (lectures.length === 0) {
+      console.warn(`Course ${course.courseCode} has no lecture sections`);
+      return [];
+    }
+
     const allCourseCombinations: SelectedCourse[][] = [];
 
     for (const lecture of lectures) {
-      // Find related sections (tutorials, labs) for this lecture
+      // Find ALL sections that belong to this lecture
+      // parentLecture === lecture.sectionId means it's tied to this specific lecture
+      // parentLecture === undefined means it can pair with ANY lecture (universal sections)
       const relatedSections = course.sections.filter(section => 
         section.sectionType !== 'Lecture' && 
-        (section.parentLecture === lecture.sectionId || section.parentLecture === undefined)
+        section.parentLecture === lecture.sectionId
       );
 
-      if (relatedSections.length === 0) {
-        // No tutorials/labs required - just the lecture
+      // Also get universal sections (no parent lecture specified)
+      const universalSections = course.sections.filter(section =>
+        section.sectionType !== 'Lecture' &&
+        section.parentLecture === undefined
+      );
+
+      // Group related sections by type (Tutorial, Lab, etc.)
+      const sectionsByType: Record<string, Section[]> = {};
+      
+      for (const section of relatedSections) {
+        if (!sectionsByType[section.sectionType]) {
+          sectionsByType[section.sectionType] = [];
+        }
+        sectionsByType[section.sectionType].push(section);
+      }
+
+      // Add universal sections to each type group
+      for (const section of universalSections) {
+        if (!sectionsByType[section.sectionType]) {
+          sectionsByType[section.sectionType] = [];
+        }
+        sectionsByType[section.sectionType].push(section);
+      }
+
+      // If no additional sections required, just return the lecture
+      if (Object.keys(sectionsByType).length === 0) {
         allCourseCombinations.push([{
           course,
           selectedSection: lecture,
         }]);
       } else {
-        // Generate one combination for each tutorial/lab option
-        for (const relatedSection of relatedSections) {
-          allCourseCombinations.push([
+        // Generate Cartesian product of all section types
+        // Example: Tutorial=[T1,T2], Lab=[L1,L2] => [[T1,L1], [T1,L2], [T2,L1], [T2,L2]]
+        const sectionTypeArrays = Object.values(sectionsByType);
+        const sectionCombinations = cartesianProduct(sectionTypeArrays);
+
+        // For each combination of sections, create a complete course selection
+        for (const sectionCombo of sectionCombinations) {
+          const courseSelection: SelectedCourse[] = [
             {
               course,
               selectedSection: lecture,
-            },
-            {
-              course,
-              selectedSection: relatedSection,
             }
-          ]);
+          ];
+
+          // Add all sections in this combination
+          for (const section of sectionCombo) {
+            courseSelection.push({
+              course,
+              selectedSection: section,
+            });
+          }
+
+          allCourseCombinations.push(courseSelection);
         }
       }
     }
@@ -127,8 +236,11 @@ function generateAllCombinations(courses: Course[]): SelectedCourse[][] {
     return allCourseCombinations;
   });
 
+  // Filter out empty course combinations (invalid courses)
+  const validCombinationsByCourse = sectionCombinationsByCourse.filter(combos => combos.length > 0);
+
   // Generate Cartesian product of all course combinations
-  const allSchedules = cartesianProduct(sectionCombinationsByCourse);
+  const allSchedules = cartesianProduct(validCombinationsByCourse);
 
   // Flatten: each schedule is an array of SelectedCourse arrays, flatten to single array
   return allSchedules.map(schedule => schedule.flat());
@@ -236,7 +348,10 @@ function scoreLongBreaks(schedule: SelectedCourse[]): number {
 function scoreConsistentStart(schedule: SelectedCourse[]): number {
   const variance = calculateStartTimeVariance(schedule);
   // Lower variance = higher score
-  return Math.max(0, 1000 - variance);
+  // Use inverse scoring: 10000 / (1 + variance)
+  // Perfect consistency (variance=0) = 10000 points
+  // High variance (variance=10000) = ~1 point
+  return 10000 / (1 + variance);
 }
 
 /**

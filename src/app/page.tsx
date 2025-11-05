@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Course, Section, SelectedCourse, TermType, SchedulePreferences, DayOfWeek } from '@/types';
 import { mockCourses } from '@/data/mock-courses';
-import { TimetableGrid } from '@/components/TimetableGrid';
+import TimetableGrid from '@/components/TimetableGrid';
 import { CourseList } from '@/components/CourseList';
 import { SearchBar, FilterBar, FilterButton } from '@/components/SearchBar';
 import { BuildingReference } from '@/components/BuildingReference';
@@ -31,6 +31,8 @@ export default function Home() {
   const [conflictToast, setConflictToast] = useState<Array<{ course1: string; course2: string }>>([]);
   const [conflictingCourses, setConflictingCourses] = useState<string[]>([]);
   const [selectedTerm, setSelectedTerm] = useState<TermType>('2025-26-T1');
+  const [swapWarning, setSwapWarning] = useState<string | null>(null);
+  const [isSwapWarningExiting, setIsSwapWarningExiting] = useState(false);
   
   // Schedule mode: 'manual' or 'auto-generate'
   const [scheduleMode, setScheduleMode] = useState<'manual' | 'auto-generate'>('auto-generate');
@@ -84,6 +86,12 @@ export default function Home() {
 
   // Get unique departments
   const departments = Array.from(new Set(mockCourses.map(c => c.department)));
+
+  // Memoize available courses for TimetableGrid to prevent re-renders
+  const availableCourses = useMemo(() => 
+    mockCourses.filter(c => c.term === selectedTerm), 
+    [selectedTerm]
+  );
 
   // Add a course section to schedule
   const handleAddSection = (course: Course, section: Section) => {
@@ -235,7 +243,7 @@ export default function Home() {
   };
 
   // Remove a course from schedule
-  const handleRemoveCourse = (index: number) => {
+  const handleRemoveCourse = useCallback((index: number) => {
     const updatedCourses = selectedCourses.filter((_, i) => i !== index);
     setSelectedCourses(updatedCourses);
     
@@ -247,10 +255,10 @@ export default function Home() {
       conflictingCodes.add(conflict.course2.course.courseCode);
     });
     setConflictingCourses(Array.from(conflictingCodes));
-  };
+  }, [selectedCourses]);
 
   // Swap lecture section and automatically assign tutorial
-  const handleSwapLectureSection = (courseCode: string, currentLectureId: string, newLectureId: string) => {
+  const handleSwapLectureSection = useCallback((courseCode: string, currentLectureId: string, newLectureId: string) => {
     // Find the course data
     const courseData = mockCourses.find(c => c.courseCode === courseCode && c.term === selectedTerm);
     if (!courseData) return;
@@ -301,10 +309,10 @@ export default function Home() {
 
       return updated;
     });
-  };
+  }, [selectedTerm]);
 
   // Swap tutorial sections (only within same lecture)
-  const handleSwapTutorialSection = (courseCode: string, fromTutorialId: string, toTutorialId: string) => {
+  const handleSwapTutorialSection = useCallback((courseCode: string, fromTutorialId: string, toTutorialId: string) => {
     // Find the course data
     const courseData = mockCourses.find(c => c.courseCode === courseCode && c.term === selectedTerm);
     if (!courseData) return;
@@ -327,10 +335,10 @@ export default function Home() {
         return selectedCourse;
       });
     });
-  };
+  }, [selectedTerm]);
 
   // Remove section from course list
-  const handleRemoveSection = (course: Course, section: Section) => {
+  const handleRemoveSection = useCallback((course: Course, section: Section) => {
     const updatedCourses = selectedCourses.filter(
       (sc) => !(sc.course.courseCode === course.courseCode && sc.selectedSection.sectionId === section.sectionId)
     );
@@ -344,16 +352,47 @@ export default function Home() {
       conflictingCodes.add(conflict.course2.course.courseCode);
     });
     setConflictingCourses(Array.from(conflictingCodes));
-  };
+  }, [selectedCourses]);
 
   // Handle closing warning with animation
-  const handleCloseWarning = () => {
+  const handleCloseWarning = useCallback(() => {
     setIsWarningExiting(true);
     setTimeout(() => {
       setFullSectionWarning(null);
       setIsWarningExiting(false);
     }, 300);
-  };
+  }, []);
+
+  // Handle swap warnings
+  const handleSwapWarning = useCallback((message: string, type: 'full' | 'conflict') => {
+    setSwapWarning(message);
+    setIsSwapWarningExiting(false);
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      setIsSwapWarningExiting(true);
+      setTimeout(() => setSwapWarning(null), 300);
+    }, 5000);
+  }, []);
+
+  // Handle course click (show swap modal for lectures, details for tutorials)
+  const handleCourseClick = useCallback((course: SelectedCourse) => {
+    if (course.selectedSection.sectionType === 'Lecture') {
+      setSwapModalCourse(course);
+    } else {
+      setSelectedCourseDetails(course);
+    }
+  }, []);
+
+  // Handle remove course from timetable
+  const handleCourseClickRemove = useCallback((course: SelectedCourse) => {
+    const index = selectedCourses.indexOf(course);
+    handleRemoveCourse(index);
+  }, [selectedCourses, handleRemoveCourse]);
+
+  // Handle location click
+  const handleLocationClick = useCallback((location: string) => {
+    setSelectedLocation(location);
+  }, []);
 
   // Clear all courses
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -967,24 +1006,15 @@ export default function Home() {
               {selectedCourses.length > 0 ? (
                 <TimetableGrid
                   selectedCourses={selectedCourses}
-                  onCourseClick={(course) => {
-                    // If lecture, show swap modal; if tutorial, show details modal
-                    if (course.selectedSection.sectionType === 'Lecture') {
-                      setSwapModalCourse(course);
-                    } else {
-                      setSelectedCourseDetails(course);
-                    }
-                  }}
-                  onRemoveCourse={(course) => {
-                    const index = selectedCourses.indexOf(course);
-                    handleRemoveCourse(index);
-                  }}
-                  onLocationClick={(location) => setSelectedLocation(location)}
+                  onCourseClick={handleCourseClick}
+                  onRemoveCourse={handleCourseClickRemove}
+                  onLocationClick={handleLocationClick}
                   conflictingCourses={conflictingCourses}
                   enableDragDrop={true}
                   onSwapLectures={handleSwapLectureSection}
                   onSwapTutorials={handleSwapTutorialSection}
-                  availableCourses={mockCourses.filter(c => c.term === selectedTerm)}
+                  availableCourses={availableCourses}
+                  onSwapWarning={handleSwapWarning}
                 />
               ) : (
                 <div className="bg-white/70 dark:bg-[#1e1e1e]/70 backdrop-blur-xl rounded-xl shadow-lg p-8 lg:p-12 text-center border border-gray-200/30 dark:border-gray-700/30">
@@ -1115,6 +1145,45 @@ export default function Home() {
               <div 
                 className="h-full bg-amber-500 dark:bg-amber-400 animate-shrink"
                 style={{ animationDuration: '6000ms' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Swap Warning Toast */}
+      {swapWarning && (
+        <div className={`fixed top-36 right-4 z-50 ${isSwapWarningExiting ? 'animate-slideOutToTop' : 'animate-slideInFromTop'}`}>
+          <div className="bg-amber-50/95 dark:bg-amber-900/95 backdrop-blur-xl border-2 border-amber-400 dark:border-amber-600 rounded-xl shadow-2xl overflow-hidden max-w-md">
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="bg-amber-500 dark:bg-amber-600 text-white p-2 rounded-full flex-shrink-0 shadow-lg">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-amber-900 dark:text-amber-100 mb-1 text-base">
+                    Section Swapped with Warning
+                  </h4>
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    {swapWarning}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsSwapWarningExiting(true);
+                    setTimeout(() => setSwapWarning(null), 300);
+                  }}
+                  className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-200/50 dark:hover:bg-amber-800/30 rounded p-1 transition-all flex-shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="h-1 bg-amber-200/50 dark:bg-amber-950/50">
+              <div 
+                className="h-full bg-amber-500 dark:bg-amber-400 animate-shrink"
+                style={{ animationDuration: '5000ms' }}
               />
             </div>
           </div>
