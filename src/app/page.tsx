@@ -722,6 +722,11 @@ export default function Home() {
                   onClick={() => {
                     setScheduleMode('auto-generate');
                     setGeneratedSchedules([]);
+                    // Sync selectedCourseCodes from selectedCourses when switching to auto-generate
+                    const courseCodes = Array.from(new Set(
+                      selectedCourses.map(sc => sc.course.courseCode)
+                    ));
+                    setSelectedCourseCodes(courseCodes);
                   }}
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-all ${
                     scheduleMode === 'auto-generate'
@@ -805,7 +810,8 @@ export default function Home() {
                   <div className="space-y-2">
                     {selectedCourses.map((sc, idx) => {
                       const isExpanded = expandedScheduleCourse === idx;
-                      const hasDetails = sc.course.description || sc.course.enrollmentRequirements;
+                      const section = sc.selectedSection;
+                      const hasSeats = hasAvailableSeats(section);
                       
                       return (
                         <div
@@ -816,29 +822,27 @@ export default function Home() {
                             borderColor: `${sc.color}40`
                           }}
                         >
-                          {/* Course Header */}
+                          {/* Section Header */}
                           <div className="group flex items-center gap-2 p-2 hover:bg-white/50 dark:hover:bg-black/20 transition-all">
-                            {hasDetails && (
-                              <button
-                                onClick={() => setExpandedScheduleCourse(isExpanded ? null : idx)}
-                                className="flex-shrink-0 p-0.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                              >
-                                {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                              </button>
-                            )}
+                            <button
+                              onClick={() => setExpandedScheduleCourse(isExpanded ? null : idx)}
+                              className="flex-shrink-0 p-0.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                            >
+                              {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                            </button>
                             <div
                               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                               style={{ backgroundColor: sc.color }}
                             />
                             <button
-                              onClick={() => hasDetails && setExpandedScheduleCourse(isExpanded ? null : idx)}
+                              onClick={() => setExpandedScheduleCourse(isExpanded ? null : idx)}
                               className="flex-1 min-w-0 text-left"
                             >
                               <div className="font-semibold text-xs text-gray-900 dark:text-gray-100">
                                 {sc.course.courseCode}
                               </div>
                               <div className="text-[10px] text-gray-600 dark:text-gray-400">
-                                {sc.selectedSection.sectionType} {sc.selectedSection.sectionId}
+                                {section.sectionType} {section.sectionId}
                               </div>
                             </button>
                             <button
@@ -850,29 +854,77 @@ export default function Home() {
                             </button>
                           </div>
 
-                          {/* Expanded Details */}
-                          {isExpanded && hasDetails && (
+                          {/* Expanded Section Details */}
+                          {isExpanded && (
                             <div className="px-3 py-2 bg-white/30 dark:bg-black/20 border-t border-gray-200/50 dark:border-gray-600/50 space-y-2">
-                              {sc.course.description && (
+                              {/* Schedule */}
+                              <div>
+                                <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  Schedule
+                                </div>
+                                <div className="space-y-1">
+                                  {section.timeSlots.map((slot, slotIdx) => (
+                                    <div key={slotIdx} className="text-[10px] text-gray-600 dark:text-gray-400">
+                                      {slot.day} {slot.startTime} - {slot.endTime}
+                                      {slot.location && (
+                                        <span className="text-purple-600 dark:text-purple-400 ml-1">
+                                          📍 {slot.location}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Instructor */}
+                              {section.instructor && (
                                 <div>
                                   <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                                    📖 Course Description
+                                    👤 Instructor
                                   </div>
-                                  <div className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    {sc.course.description}
+                                  <div className="text-[10px] text-gray-600 dark:text-gray-400">
+                                    {section.instructor.name}
                                   </div>
                                 </div>
                               )}
-                              {sc.course.enrollmentRequirements && (
-                                <div>
-                                  <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                                    ⚠️ Requirements
-                                  </div>
-                                  <div className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    {sc.course.enrollmentRequirements}
-                                  </div>
+
+                              {/* Enrollment Status */}
+                              <div>
+                                <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                  📊 Enrollment
                                 </div>
-                              )}
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    Status:
+                                  </span>
+                                  <span className={`font-semibold px-1.5 py-0.5 rounded ${
+                                    hasSeats 
+                                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                  }`}>
+                                    {hasSeats ? 'Open' : 'Closed'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-[10px] mt-1">
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    Enrolled / Quota:
+                                  </span>
+                                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                    {section.enrolled} / {section.quota}
+                                  </span>
+                                </div>
+                                {hasSeats && (
+                                  <div className="flex items-center justify-between text-[10px] mt-1">
+                                    <span className="text-gray-600 dark:text-gray-400">
+                                      Seats Remaining:
+                                    </span>
+                                    <span className="font-semibold text-green-700 dark:text-green-400">
+                                      {section.seatsRemaining}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>

@@ -174,10 +174,11 @@ export const testCourses: Course[] = [
         enrolled: 25,
         seatsRemaining: 5,
       },
-      // Discussions - L2A-L2H (closed, associated with 002-004)
+      // Discussions - L2A-L2H (closed, associated with lecture 002)
       {
         sectionId: 'L2A',
         sectionType: 'Tutorial',
+        parentLecture: '002',
         classNumber: 10031,
         language: 'English',
         addConsent: false,
@@ -192,6 +193,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L2B',
         sectionType: 'Tutorial',
+        parentLecture: '002',
         classNumber: 10032,
         language: 'English',
         addConsent: false,
@@ -206,6 +208,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L2C',
         sectionType: 'Tutorial',
+        parentLecture: '002',
         classNumber: 10033,
         language: 'English',
         addConsent: false,
@@ -220,6 +223,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L2D',
         sectionType: 'Tutorial',
+        parentLecture: '002',
         classNumber: 10034,
         language: 'English',
         addConsent: false,
@@ -234,6 +238,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L2E',
         sectionType: 'Tutorial',
+        parentLecture: '002',
         classNumber: 10035,
         language: 'English',
         addConsent: false,
@@ -248,6 +253,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L2F',
         sectionType: 'Tutorial',
+        parentLecture: '002',
         classNumber: 10036,
         language: 'English',
         addConsent: false,
@@ -262,6 +268,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L2G',
         sectionType: 'Tutorial',
+        parentLecture: '002',
         classNumber: 10037,
         language: 'English',
         addConsent: false,
@@ -276,6 +283,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L2H',
         sectionType: 'Tutorial',
+        parentLecture: '002',
         classNumber: 10038,
         language: 'English',
         addConsent: false,
@@ -291,6 +299,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L3A',
         sectionType: 'Tutorial',
+        parentLecture: '003',
         classNumber: 10039,
         language: 'English',
         addConsent: false,
@@ -305,6 +314,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L3B',
         sectionType: 'Tutorial',
+        parentLecture: '003',
         classNumber: 10040,
         language: 'English',
         addConsent: false,
@@ -319,6 +329,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L3C',
         sectionType: 'Tutorial',
+        parentLecture: '003',
         classNumber: 10041,
         language: 'English',
         addConsent: false,
@@ -333,6 +344,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L3D',
         sectionType: 'Tutorial',
+        parentLecture: '003',
         classNumber: 10042,
         language: 'English',
         addConsent: false,
@@ -347,6 +359,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L3E',
         sectionType: 'Tutorial',
+        parentLecture: '003',
         classNumber: 10043,
         language: 'English',
         addConsent: false,
@@ -361,6 +374,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L3F',
         sectionType: 'Tutorial',
+        parentLecture: '003',
         classNumber: 10044,
         language: 'English',
         addConsent: false,
@@ -375,6 +389,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L3G',
         sectionType: 'Tutorial',
+        parentLecture: '003',
         classNumber: 10045,
         language: 'English',
         addConsent: false,
@@ -389,6 +404,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L3H',
         sectionType: 'Tutorial',
+        parentLecture: '003',
         classNumber: 10046,
         language: 'English',
         addConsent: false,
@@ -404,6 +420,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L4A',
         sectionType: 'Tutorial',
+        parentLecture: '004',
         classNumber: 10047,
         language: 'English',
         addConsent: false,
@@ -418,6 +435,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L4B',
         sectionType: 'Tutorial',
+        parentLecture: '004',
         classNumber: 10048,
         language: 'English',
         addConsent: false,
@@ -432,6 +450,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L4C',
         sectionType: 'Tutorial',
+        parentLecture: '004',
         classNumber: 10049,
         language: 'English',
         addConsent: false,
@@ -446,6 +465,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L4D',
         sectionType: 'Tutorial',
+        parentLecture: '004',
         classNumber: 10050,
         language: 'English',
         addConsent: false,
@@ -460,6 +480,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L4E',
         sectionType: 'Tutorial',
+        parentLecture: '004',
         classNumber: 10051,
         language: 'English',
         addConsent: false,
@@ -474,6 +495,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L4F',
         sectionType: 'Tutorial',
+        parentLecture: '004',
         classNumber: 10052,
         language: 'English',
         addConsent: false,
@@ -488,6 +510,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L4G',
         sectionType: 'Tutorial',
+        parentLecture: '004',
         classNumber: 10053,
         language: 'English',
         addConsent: false,
@@ -502,6 +525,7 @@ export const testCourses: Course[] = [
       {
         sectionId: 'L4H',
         sectionType: 'Tutorial',
+        parentLecture: '004',
         classNumber: 10054,
         language: 'English',
         addConsent: false,
@@ -605,7 +629,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2A',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 30522,
         language: 'English',
         addConsent: false,
@@ -619,7 +643,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2B',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 30523,
         language: 'English',
         addConsent: false,
@@ -633,7 +657,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2D',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 30524,
         language: 'English',
         addConsent: false,
@@ -647,7 +671,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2E',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 30525,
         language: 'English',
         addConsent: false,
@@ -729,7 +753,7 @@ export const testCourses: Course[] = [
       // Laboratories
       {
         sectionId: 'L2A',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22104,
         language: 'English',
         addConsent: false,
@@ -743,7 +767,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2B',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22105,
         language: 'English',
         addConsent: false,
@@ -757,7 +781,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2C',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22106,
         language: 'English',
         addConsent: false,
@@ -771,7 +795,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2D',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22107,
         language: 'English',
         addConsent: false,
@@ -785,7 +809,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2E',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22108,
         language: 'English',
         addConsent: false,
@@ -799,7 +823,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2F',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22109,
         language: 'English',
         addConsent: false,
@@ -813,7 +837,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2G',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22110,
         language: 'English',
         addConsent: false,
@@ -827,7 +851,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2H',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22111,
         language: 'English',
         addConsent: false,
@@ -841,7 +865,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2J',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22112,
         language: 'English',
         addConsent: false,
@@ -855,7 +879,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2K',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22113,
         language: 'English',
         addConsent: false,
@@ -869,7 +893,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2L',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22114,
         language: 'English',
         addConsent: false,
@@ -883,7 +907,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2M',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22115,
         language: 'English',
         addConsent: false,
@@ -897,7 +921,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2N',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22116,
         language: 'English',
         addConsent: false,
@@ -911,7 +935,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2P',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22117,
         language: 'English',
         addConsent: false,
@@ -925,7 +949,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2Q',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22118,
         language: 'English',
         addConsent: false,
@@ -939,7 +963,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2R',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22119,
         language: 'English',
         addConsent: false,
@@ -953,7 +977,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2S',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22120,
         language: 'English',
         addConsent: false,
@@ -967,7 +991,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2T',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22121,
         language: 'English',
         addConsent: false,
@@ -981,7 +1005,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2U',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22122,
         language: 'English',
         addConsent: false,
@@ -995,7 +1019,7 @@ export const testCourses: Course[] = [
       },
       {
         sectionId: 'L2V',
-        sectionType: 'Laboratory',
+        sectionType: 'Lab',
         classNumber: 22123,
         language: 'English',
         addConsent: false,
