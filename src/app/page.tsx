@@ -55,6 +55,7 @@ export default function Home() {
   // Simple preference - only one can be selected at a time
   const [selectedPreference, setSelectedPreference] = useState<'shortBreaks' | 'longBreaks' | 'consistentStart' | 'startLate' | 'endEarly' | 'daysOff' | null>(null);
   const [preferredDaysOff, setPreferredDaysOff] = useState<DayOfWeek[]>([]);
+  const [excludeFullSections, setExcludeFullSections] = useState(false);
 
   // Generated schedules state
   const [generatedSchedules, setGeneratedSchedules] = useState<GeneratedSchedule[]>([]);
@@ -520,6 +521,7 @@ export default function Home() {
       const schedules = generateSchedules(coursesToGenerate, {
         preference: selectedPreference,
         maxResults: 100,
+        excludeFullSections,
       });
 
       setGeneratedSchedules(schedules);
@@ -910,6 +912,30 @@ export default function Home() {
                         {pref.label.split(' ')[1] + (pref.label.split(' ')[2] ? ' ' + pref.label.split(' ')[2] : '')}
                       </button>
                     ))}
+                  </div>
+
+                  {/* Exclude Full Sections Toggle */}
+                  <div className="flex items-center justify-between gap-3 px-3 py-2 bg-white/50 dark:bg-[#1e1e1e]/50 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Skip full sections
+                    </span>
+                    <button
+                      onClick={() => setExcludeFullSections(!excludeFullSections)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                        excludeFullSections 
+                          ? 'bg-purple-600 dark:bg-purple-500' 
+                          : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                      role="switch"
+                      aria-checked={excludeFullSections}
+                      title="When ON: strictly exclude full sections. When OFF: prefer available sections but allow full sections if needed."
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+                          excludeFullSections ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
 
                   {/* Generate Button */}

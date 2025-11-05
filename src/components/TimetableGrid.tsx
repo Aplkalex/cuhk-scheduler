@@ -264,6 +264,11 @@ export function TimetableGrid({
     const [isLocalHovered, setIsLocalHovered] = useState(false);
     const uniqueId = `${selectedCourse.course.courseCode}-${selectedCourse.selectedSection.sectionId}-${blockId}`;
     
+    // Calculate duration of this time slot (shorter courses should appear on top)
+    const startMinutes = timeToMinutes(slot.startTime);
+    const endMinutes = timeToMinutes(slot.endTime);
+    const durationMinutes = endMinutes - startMinutes;
+    
     // Check if there are alternatives to swap to
     const courseData = availableCourses.find(c => c.courseCode === selectedCourse.course.courseCode);
     let hasAlternatives = false;
@@ -334,7 +339,7 @@ export function TimetableGrid({
           'px-1.5 py-1',
           'overflow-visible',
           isFull && 'border-2 border-red-500 dark:border-red-400 shadow-[0_0_0_1px_rgba(239,68,68,0.5)]',
-          hasConflict && 'conflict-pattern border-2 border-red-500',
+          hasConflict && 'conflict-pattern border-2 border-yellow-500 dark:border-yellow-400 ring-2 ring-yellow-500/50',
           isDragging && 'opacity-30',
           isValidDropTarget && 'ring-4 ring-yellow-400 scale-105 shadow-2xl',
           isDraggable && 'cursor-grab active:cursor-grabbing',
@@ -342,7 +347,20 @@ export function TimetableGrid({
         )}
         style={{
           ...style,
-          transition: isSwappingProp ? 'none' : isDragging ? 'opacity 0.2s' : 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease',
+          // Z-index logic: shorter courses appear on top when conflicting
+          // Base z-index: 1 (normal), 10+ (conflicts)
+          // For conflicts: z-index = 100 - duration (so 50min class = z50, 180min class = z20)
+          // This ensures shorter courses are always visible on top
+          // When hovered, bring to the very top (z-index 200)
+          zIndex: isLocalHovered && hasConflict 
+            ? 200 
+            : hasConflict 
+              ? Math.max(10, 100 - Math.floor(durationMinutes / 10)) 
+              : 1,
+          // More transparency for conflicts so overlapping courses are clearly visible
+          // Full opacity when hovered
+          opacity: hasConflict ? (isLocalHovered ? 1 : 0.85) : 1,
+          transition: isSwappingProp ? 'none' : isDragging ? 'opacity 0.2s' : 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease, z-index 0.1s ease, opacity 0.2s ease',
         }}
         onMouseEnter={() => setIsLocalHovered(true)}
         onMouseLeave={() => setIsLocalHovered(false)}
@@ -388,7 +406,12 @@ export function TimetableGrid({
             <div className="font-semibold text-xs leading-tight truncate flex-1">
               {selectedCourse.course.courseCode}
             </div>
-            {isFull && (
+            {hasConflict && (
+              <div title="Schedule conflict" className="flex-shrink-0">
+                <AlertCircle className="w-3 h-3 text-yellow-200 dark:text-yellow-300 animate-pulse" />
+              </div>
+            )}
+            {isFull && !hasConflict && (
               <div title="Section is full" className="flex-shrink-0">
                 <AlertCircle className="w-3 h-3 text-red-200" />
               </div>

@@ -6,7 +6,7 @@
  */
 
 import { Course, Section, SelectedCourse, TimeSlot, DayOfWeek } from '@/types';
-import { timeSlotsOverlap } from './schedule-utils';
+import { timeSlotsOverlap, hasAvailableSeats } from './schedule-utils';
 
 // ============================================================================
 // TYPES
@@ -28,6 +28,7 @@ export type GeneratedSchedule = {
 export type ScheduleGenerationOptions = {
   preference: 'shortBreaks' | 'longBreaks' | 'consistentStart' | 'startLate' | 'endEarly' | 'daysOff' | null;
   maxResults?: number; // Default 100
+  excludeFullSections?: boolean; // If true, strictly exclude full sections. If false, prefer non-full but allow full sections
 };
 
 // ============================================================================
@@ -110,20 +111,34 @@ export function generateSchedules(
   validateCourses(courses);
 
   const maxResults = options.maxResults || 100;
+  const excludeFullSections = options.excludeFullSections || false;
 
   // Step 1: Generate all possible combinations
   const allCombinations = generateAllCombinations(courses);
   
   // Step 2: Filter out conflicting schedules
-  const validSchedules = allCombinations.filter(combination => 
+  let validSchedules = allCombinations.filter(combination => 
     !hasConflicts(combination)
   );
 
-  // Step 3: Score each schedule based on preference
+  // Step 2.5: If excludeFullSections is true, strictly filter out schedules with full sections
+  if (excludeFullSections) {
+    validSchedules = validSchedules.filter(combination =>
+      combination.every(selectedCourse => hasAvailableSeats(selectedCourse.selectedSection))
+    );
+  }
+
+  // Step 3: Score each schedule based on preference AND seat availability
   const scoredSchedules = validSchedules.map(sections => {
-    const score = options.preference 
+    // Base score from user preference
+    let score = options.preference 
       ? calculateScore(sections, options.preference)
       : 0;
+    
+    // Add bonus score for non-full sections (prioritize schedules with available seats)
+    // This ensures schedules with available seats appear first, regardless of excludeFullSections setting
+    const seatAvailabilityBonus = calculateSeatAvailabilityScore(sections);
+    score += seatAvailabilityBonus;
     
     const metadata = calculateMetadata(sections, options.preference);
     
@@ -384,6 +399,33 @@ function scoreDaysOff(schedule: SelectedCourse[]): number {
   const daysUsed = getUniqueDays(schedule);
   const freeDays = 5 - daysUsed.length; // 5 weekdays
   return freeDays * 200; // Each free day = 200 points
+}
+
+/**
+ * Seat Availability: Prioritize schedules with available seats
+ * Gives massive bonus to schedules where all sections have available seats
+ * This ensures non-full schedules always appear before full ones
+ */
+function calculateSeatAvailabilityScore(schedule: SelectedCourse[]): number {
+  let score = 0;
+  let totalSections = 0;
+  let availableSections = 0;
+
+  for (const selectedCourse of schedule) {
+    totalSections++;
+    if (hasAvailableSeats(selectedCourse.selectedSection)) {
+      availableSections++;
+      // Each section with available seats = 500 bonus points
+      score += 500;
+    }
+  }
+
+  // Additional bonus if ALL sections have available seats
+  if (availableSections === totalSections && totalSections > 0) {
+    score += 5000; // Huge bonus for fully available schedules
+  }
+
+  return score;
 }
 
 // ============================================================================
