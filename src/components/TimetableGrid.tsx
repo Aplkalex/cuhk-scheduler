@@ -44,6 +44,8 @@ export function TimetableGrid({
   const [draggedCourse, setDraggedCourse] = useState<SelectedCourse | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isSwapping, setIsSwapping] = useState(false); // Track if we're in the middle of a swap
+  const [hasActuallyDragged, setHasActuallyDragged] = useState(false); // Track if user actually moved during drag
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null); // Track initial drag position
   const { startHour, endHour, slotHeight } = TIMETABLE_CONFIG;
   
   // Generate hours array (8 AM to 9 PM)
@@ -79,6 +81,23 @@ export function TimetableGrid({
   const handleDragStart = (event: DragStartEvent) => {
     const course = event.active.data.current?.course as SelectedCourse;
     setDraggedCourse(course);
+    setHasActuallyDragged(false); // Reset on drag start
+    // Store initial position
+    if (event.activatorEvent instanceof MouseEvent || event.activatorEvent instanceof TouchEvent) {
+      const clientX = 'clientX' in event.activatorEvent ? event.activatorEvent.clientX : event.activatorEvent.touches[0].clientX;
+      const clientY = 'clientY' in event.activatorEvent ? event.activatorEvent.clientY : event.activatorEvent.touches[0].clientY;
+      setDragStartPos({ x: clientX, y: clientY });
+    }
+  };
+
+  const handleDragMove = (event: any) => {
+    // Only consider it a real drag if user moved more than 5 pixels
+    if (!hasActuallyDragged && dragStartPos && event.delta) {
+      const distance = Math.sqrt(Math.pow(event.delta.x, 2) + Math.pow(event.delta.y, 2));
+      if (distance > 5) {
+        setHasActuallyDragged(true);
+      }
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -86,6 +105,7 @@ export function TimetableGrid({
     
     if (!over || !active.data.current || !over.data.current) {
       setDraggedCourse(null);
+      setDragStartPos(null);
       return;
     }
 
@@ -95,6 +115,7 @@ export function TimetableGrid({
     // Don't swap with itself
     if (draggedCourse === targetCourse) {
       setDraggedCourse(null);
+      setDragStartPos(null);
       return;
     }
 
@@ -135,6 +156,7 @@ export function TimetableGrid({
 
     // Clear draggedCourse immediately to hide ghost blocks
     setDraggedCourse(null);
+    setDragStartPos(null);
 
     // Set swapping flag to suppress animations
     setIsSwapping(true);
@@ -172,6 +194,8 @@ export function TimetableGrid({
 
   const handleDragCancel = () => {
     setDraggedCourse(null);
+    setHasActuallyDragged(false);
+    setDragStartPos(null);
   };
 
   // Ghost Section Block Component (appears when dragging a lecture or tutorial)
@@ -252,6 +276,7 @@ export function TimetableGrid({
     slot,
     isDraggedCourse,
     isSwapping: isSwappingProp,
+    hasActuallyDragged: hasActuallyDraggedProp,
   }: { 
     selectedCourse: SelectedCourse; 
     blockId: string; 
@@ -260,6 +285,7 @@ export function TimetableGrid({
     slot: any;
     isDraggedCourse: boolean;
     isSwapping: boolean;
+    hasActuallyDragged: boolean;
   }) => {
     const [isLocalHovered, setIsLocalHovered] = useState(false);
     const uniqueId = `${selectedCourse.course.courseCode}-${selectedCourse.selectedSection.sectionId}-${blockId}`;
@@ -284,6 +310,12 @@ export function TimetableGrid({
           (s: any) => s.sectionType === 'Tutorial' && s.parentLecture === selectedCourse.selectedSection.parentLecture
         ).length;
         hasAlternatives = tutorialCount > 1;
+      } else if (selectedCourse.selectedSection.sectionType === 'Lab') {
+        // Count labs with same parentLecture - need at least 2 to enable drag
+        const labCount = courseData.sections.filter(
+          (s: any) => s.sectionType === 'Lab' && s.parentLecture === selectedCourse.selectedSection.parentLecture
+        ).length;
+        hasAlternatives = labCount > 1;
       }
     }
     
@@ -397,7 +429,8 @@ export function TimetableGrid({
         <div 
           className="overflow-hidden flex flex-col justify-center h-full relative"
           onClick={(e) => {
-            if (!isDragging) {
+            // Only trigger click if user didn't actually drag
+            if (!hasActuallyDraggedProp) {
               onCourseClick?.(selectedCourse);
             }
           }}
@@ -494,6 +527,7 @@ export function TimetableGrid({
                         slot={slot}
                         isDraggedCourse={draggedCourse === selectedCourse}
                         isSwapping={isSwapping}
+                        hasActuallyDragged={hasActuallyDragged}
                       />
                     );
                   })
@@ -516,6 +550,14 @@ export function TimetableGrid({
                   alternativeSections = courseData.sections.filter(
                     (s: any) => 
                       s.sectionType === 'Tutorial' && 
+                      s.parentLecture === draggedCourse.selectedSection.parentLecture &&
+                      s.sectionId !== draggedCourse.selectedSection.sectionId
+                  );
+                } else if (draggedCourse.selectedSection.sectionType === 'Lab') {
+                  // Show alternative labs with same parent lecture
+                  alternativeSections = courseData.sections.filter(
+                    (s: any) => 
+                      s.sectionType === 'Lab' && 
                       s.parentLecture === draggedCourse.selectedSection.parentLecture &&
                       s.sectionId !== draggedCourse.selectedSection.sectionId
                   );
@@ -551,6 +593,7 @@ export function TimetableGrid({
       <>
         <DndContext
           onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >

@@ -117,8 +117,8 @@ function CourseListItem({
     const tutorials = course.sections.filter(s => s.sectionType === 'Tutorial');
     const labs = course.sections.filter(s => s.sectionType === 'Lab');
 
-    // If there are lectures with associated tutorials
-    if (lectures.length > 0 && tutorials.some(t => t.parentLecture)) {
+    // If there are lectures with associated tutorials or labs
+    if (lectures.length > 0 && (tutorials.some(t => t.parentLecture) || labs.some(l => l.parentLecture))) {
       return lectures.map(lecture => ({
         lecture,
         tutorials: tutorials.filter(t => t.parentLecture === lecture.sectionId),
@@ -229,13 +229,17 @@ function CourseListItem({
       {mode === 'manual' && (
       <div className="space-y-1.5">
         <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-          {sectionGroups ? 'Lecture & Tutorial Sections' : 'Sections'}
+          {sectionGroups 
+            ? (course.sections.some(s => s.sectionType === 'Lab') 
+              ? 'Lecture, Tutorial & Lab Sections' 
+              : 'Lecture & Tutorial Sections')
+            : 'Sections'}
         </div>
         
         {sectionGroups ? (
-          // Hierarchical view for courses with LEC+TUT structure
+          // Hierarchical view for courses with LEC+TUT/LAB structure
           <div className="space-y-2">
-            {sectionGroups.map(({ lecture, tutorials }) => {
+            {sectionGroups.map(({ lecture, tutorials, labs }) => {
               const isLectureExpanded = expandedLectures.has(lecture.sectionId);
               const isLectureSelected = isSectionSelected(lecture);
               const isOtherLectureSelected = selectedLecture && selectedLecture.sectionId !== lecture.sectionId;
@@ -414,6 +418,91 @@ function CourseListItem({
                                   
                                   {/* Warning for full tutorial */}
                                   {isTutFull && !isTutSelected && (
+                                    <div className="px-2 py-1 bg-amber-50/50 dark:bg-amber-900/10 rounded text-[9px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                                      <AlertCircle className="w-2.5 h-2.5 flex-shrink-0" />
+                                      <span>Full section - may need waitlist/consent</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Labs */}
+                      {labs.length > 0 && (
+                        <div className="px-3 py-2 bg-gray-50/50 dark:bg-[#1e1e1e]/50 border-t border-gray-200 dark:border-gray-700">
+                          <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            🧪 Choose ONE Lab:
+                          </div>
+                          <div className="space-y-1.5">
+                            {labs.map((lab) => {
+                              const isLabSelected = isSectionSelected(lab);
+                              const isLabFull = !hasAvailableSeats(lab);
+                              return (
+                                <div key={lab.sectionId} className="space-y-1">
+                                  <div
+                                    className={cn(
+                                      'flex items-center justify-between p-2 rounded-md border transition-all',
+                                      isLabSelected
+                                        ? 'border-purple-400 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/20 ring-1 ring-purple-200 dark:ring-purple-700'
+                                        : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/10'
+                                    )}
+                                  >
+                                    <div className="flex-1 min-w-0 mr-2">
+                                      <div className="flex items-center gap-1.5 mb-0.5">
+                                        <span className="font-semibold text-gray-900 dark:text-white text-xs">
+                                          Lab {lab.sectionId}
+                                        </span>
+                                        {isLabFull && !isLabSelected && (
+                                          <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-medium">
+                                            ⚠️ Full
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-[10px] text-gray-600 dark:text-gray-400">
+                                        {lab.timeSlots.map((slot, idx) => (
+                                          <div key={idx} className="truncate">
+                                            {slot.day.slice(0, 3)} {slot.startTime}-{slot.endTime}
+                                            {slot.location && ` @ ${slot.location}`}
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <div className="mt-1 text-[10px]">
+                                        {hasAvailableSeats(lab) ? (
+                                          <span className="text-green-600 dark:text-green-400 font-medium">
+                                            {lab.seatsRemaining}/{lab.quota} seats
+                                          </span>
+                                        ) : (
+                                          <span className="text-red-600 dark:text-red-400 font-medium">
+                                            Full ({lab.enrolled}/{lab.quota})
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {isLabSelected ? (
+                                      <button
+                                        onClick={() => onRemoveSection(course, lab)}
+                                        className="flex-shrink-0 p-1.5 rounded-md transition-all bg-red-600 dark:bg-red-500 hover:bg-red-700 dark:hover:bg-red-600 text-white hover:scale-110"
+                                        title="Remove from schedule"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => onAddSection(course, lab)}
+                                        className="flex-shrink-0 p-1.5 rounded-md transition-all bg-purple-600 dark:bg-purple-500 hover:bg-purple-700 dark:hover:bg-purple-600 text-white hover:scale-110"
+                                        title={isLabFull ? 'Add to schedule (Full - may require waitlist/consent)' : 'Add to schedule'}
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Warning for full lab */}
+                                  {isLabFull && !isLabSelected && (
                                     <div className="px-2 py-1 bg-amber-50/50 dark:bg-amber-900/10 rounded text-[9px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
                                       <AlertCircle className="w-2.5 h-2.5 flex-shrink-0" />
                                       <span>Full section - may need waitlist/consent</span>

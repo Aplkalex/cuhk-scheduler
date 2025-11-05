@@ -14,7 +14,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { generateCourseColor, calculateTotalCredits, detectConflicts, hasAvailableSeats, detectNewCourseConflicts } from '@/lib/schedule-utils';
 import { generateSchedules, type GeneratedSchedule } from '@/lib/schedule-generator';
 import { DISCLAIMER } from '@/lib/constants';
-import { Calendar, Book, AlertCircle, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, Clock, Coffee, Check } from 'lucide-react';
+import { Calendar, Book, AlertCircle, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, Coffee, Check } from 'lucide-react';
 import ConflictToast from '@/components/ConflictToast';
 
 export default function Home() {
@@ -39,6 +39,7 @@ export default function Home() {
   
   // Collapsible My Schedule state
   const [isScheduleCollapsed, setIsScheduleCollapsed] = useState(false);
+  const [expandedScheduleCourse, setExpandedScheduleCourse] = useState<number | null>(null);
 
   // For auto-generate mode: just track which courses (not sections) are selected
   const [selectedCourseCodes, setSelectedCourseCodes] = useState<string[]>([]);
@@ -375,13 +376,10 @@ export default function Home() {
     }, 5000);
   }, []);
 
-  // Handle course click (show swap modal for lectures, details for tutorials)
+  // Handle course click (show course details modal)
   const handleCourseClick = useCallback((course: SelectedCourse) => {
-    if (course.selectedSection.sectionType === 'Lecture') {
-      setSwapModalCourse(course);
-    } else {
-      setSelectedCourseDetails(course);
-    }
+    // Always show course details when clicking on a course in the timetable
+    setSelectedCourseDetails(course);
   }, []);
 
   // Handle remove course from timetable
@@ -727,36 +725,81 @@ export default function Home() {
               {!isScheduleCollapsed && selectedCourses.length > 0 && (
                 <div className="px-4 py-3 max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-purple-400 dark:scrollbar-thumb-purple-600 scrollbar-track-transparent">
                   <div className="space-y-2">
-                    {selectedCourses.map((sc, idx) => (
-                      <div
-                        key={idx}
-                        className="group flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 transition-all"
-                        style={{ 
-                          backgroundColor: `${sc.color}10`,
-                          borderColor: `${sc.color}40`
-                        }}
-                      >
+                    {selectedCourses.map((sc, idx) => {
+                      const isExpanded = expandedScheduleCourse === idx;
+                      const hasDetails = sc.course.description || sc.course.enrollmentRequirements;
+                      
+                      return (
                         <div
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: sc.color }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-xs text-gray-900 dark:text-gray-100">
-                            {sc.course.courseCode}
-                          </div>
-                          <div className="text-[10px] text-gray-600 dark:text-gray-400">
-                            {sc.selectedSection.sectionType} {sc.selectedSection.sectionId}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveCourse(idx)}
-                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all opacity-60 group-hover:opacity-100"
-                          title="Remove course"
+                          key={idx}
+                          className="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden transition-all"
+                          style={{ 
+                            backgroundColor: `${sc.color}10`,
+                            borderColor: `${sc.color}40`
+                          }}
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                          {/* Course Header */}
+                          <div className="group flex items-center gap-2 p-2 hover:bg-white/50 dark:hover:bg-black/20 transition-all">
+                            {hasDetails && (
+                              <button
+                                onClick={() => setExpandedScheduleCourse(isExpanded ? null : idx)}
+                                className="flex-shrink-0 p-0.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                              >
+                                {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
+                            <div
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: sc.color }}
+                            />
+                            <button
+                              onClick={() => hasDetails && setExpandedScheduleCourse(isExpanded ? null : idx)}
+                              className="flex-1 min-w-0 text-left"
+                            >
+                              <div className="font-semibold text-xs text-gray-900 dark:text-gray-100">
+                                {sc.course.courseCode}
+                              </div>
+                              <div className="text-[10px] text-gray-600 dark:text-gray-400">
+                                {sc.selectedSection.sectionType} {sc.selectedSection.sectionId}
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => handleRemoveCourse(idx)}
+                              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all opacity-60 group-hover:opacity-100"
+                              title="Remove course"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Expanded Details */}
+                          {isExpanded && hasDetails && (
+                            <div className="px-3 py-2 bg-white/30 dark:bg-black/20 border-t border-gray-200/50 dark:border-gray-600/50 space-y-2">
+                              {sc.course.description && (
+                                <div>
+                                  <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    📖 Course Description
+                                  </div>
+                                  <div className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    {sc.course.description}
+                                  </div>
+                                </div>
+                              )}
+                              {sc.course.enrollmentRequirements && (
+                                <div>
+                                  <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    ⚠️ Requirements
+                                  </div>
+                                  <div className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    {sc.course.enrollmentRequirements}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

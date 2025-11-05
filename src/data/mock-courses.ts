@@ -1470,7 +1470,7 @@ export const mockCourses: Course[] = [
           name: 'Dr. YIP Lo Ming',
           department: 'Office of University GE',
         },
-        language: 'Chinese',
+        language: 'Cantonese',
         timeSlots: [
           {
             day: 'Friday',
@@ -1488,7 +1488,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'A',
         classNumber: 6747,
-        language: 'Chinese',
+        language: 'Cantonese',
         timeSlots: [
           {
             day: 'Tuesday',
@@ -1506,7 +1506,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'A',
         classNumber: 6748,
-        language: 'Chinese',
+        language: 'Cantonese',
         timeSlots: [
           {
             day: 'Tuesday',
@@ -1524,7 +1524,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'A',
         classNumber: 6749,
-        language: 'Chinese',
+        language: 'Cantonese',
         timeSlots: [
           {
             day: 'Thursday',
@@ -1542,7 +1542,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'A',
         classNumber: 6750,
-        language: 'Chinese',
+        language: 'Cantonese',
         timeSlots: [
           {
             day: 'Thursday',
@@ -1694,7 +1694,7 @@ export const mockCourses: Course[] = [
           name: 'Dr. LO Chun Yeung',
           department: 'Office of University GE',
         },
-        language: 'Chinese',
+        language: 'Mandarin',
         timeSlots: [
           {
             day: 'Friday',
@@ -1712,7 +1712,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'C',
         classNumber: 6757,
-        language: 'Chinese',
+        language: 'Mandarin',
         timeSlots: [
           {
             day: 'Monday',
@@ -1730,7 +1730,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'C',
         classNumber: 6758,
-        language: 'Chinese',
+        language: 'Mandarin',
         timeSlots: [
           {
             day: 'Monday',
@@ -1748,7 +1748,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'C',
         classNumber: 6759,
-        language: 'Chinese',
+        language: 'Mandarin',
         timeSlots: [
           {
             day: 'Tuesday',
@@ -1766,7 +1766,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'C',
         classNumber: 6760,
-        language: 'Chinese',
+        language: 'Mandarin',
         timeSlots: [
           {
             day: 'Tuesday',
@@ -1784,7 +1784,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'C',
         classNumber: 6761,
-        language: 'Chinese',
+        language: 'Mandarin',
         timeSlots: [
           {
             day: 'Wednesday',
@@ -1802,7 +1802,7 @@ export const mockCourses: Course[] = [
         sectionType: 'Tutorial',
         parentLecture: 'C',
         classNumber: 6762,
-        language: 'Chinese',
+        language: 'Mandarin',
         timeSlots: [
           {
             day: 'Wednesday',
