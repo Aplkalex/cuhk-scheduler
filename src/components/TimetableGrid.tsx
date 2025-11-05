@@ -43,9 +43,6 @@ export function TimetableGrid({
   const [hoveredCourse, setHoveredCourse] = useState<string | null>(null);
   const [draggedCourse, setDraggedCourse] = useState<SelectedCourse | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [isSwapping, setIsSwapping] = useState(false); // Track if we're in the middle of a swap
-  const [hasActuallyDragged, setHasActuallyDragged] = useState(false); // Track if user actually moved during drag
-  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null); // Track initial drag position
   const { startHour, endHour, slotHeight } = TIMETABLE_CONFIG;
   
   // Generate hours array (8 AM to 9 PM)
@@ -81,23 +78,6 @@ export function TimetableGrid({
   const handleDragStart = (event: DragStartEvent) => {
     const course = event.active.data.current?.course as SelectedCourse;
     setDraggedCourse(course);
-    setHasActuallyDragged(false); // Reset on drag start
-    // Store initial position
-    if (event.activatorEvent instanceof MouseEvent || event.activatorEvent instanceof TouchEvent) {
-      const clientX = 'clientX' in event.activatorEvent ? event.activatorEvent.clientX : event.activatorEvent.touches[0].clientX;
-      const clientY = 'clientY' in event.activatorEvent ? event.activatorEvent.clientY : event.activatorEvent.touches[0].clientY;
-      setDragStartPos({ x: clientX, y: clientY });
-    }
-  };
-
-  const handleDragMove = (event: any) => {
-    // Only consider it a real drag if user moved more than 5 pixels
-    if (!hasActuallyDragged && dragStartPos && event.delta) {
-      const distance = Math.sqrt(Math.pow(event.delta.x, 2) + Math.pow(event.delta.y, 2));
-      if (distance > 5) {
-        setHasActuallyDragged(true);
-      }
-    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -105,7 +85,6 @@ export function TimetableGrid({
     
     if (!over || !active.data.current || !over.data.current) {
       setDraggedCourse(null);
-      setDragStartPos(null);
       return;
     }
 
@@ -115,7 +94,6 @@ export function TimetableGrid({
     // Don't swap with itself
     if (draggedCourse === targetCourse) {
       setDraggedCourse(null);
-      setDragStartPos(null);
       return;
     }
 
@@ -139,30 +117,10 @@ export function TimetableGrid({
       );
     });
 
-    // Show warnings if needed
-    if (isTargetFull && onSwapWarning) {
-      onSwapWarning(
-        `${targetCourse.course.courseCode} - ${targetSection.sectionType} ${targetSection.sectionId} has no available seats.`,
-        'full'
-      );
-    }
-    
-    if (wouldCauseConflict && onSwapWarning) {
-      onSwapWarning(
-        `Swapping to ${targetCourse.course.courseCode} - ${targetSection.sectionType} ${targetSection.sectionId} would cause a schedule conflict.`,
-        'conflict'
-      );
-    }
-
-    // Clear draggedCourse immediately to hide ghost blocks
+    // Clear dragged course immediately so next drag can start right away
     setDraggedCourse(null);
-    setDragStartPos(null);
 
-    // Set swapping flag to suppress animations
-    setIsSwapping(true);
-
-    // Proceed with swap regardless of warnings (user can decide)
-    // Use startTransition for the swap to make it non-blocking
+    // Proceed with swap in a non-blocking transition
     startTransition(() => {
       // Lecture swap
       if (draggedSection.sectionType === 'Lecture' && targetSection.sectionType === 'Lecture') {
@@ -187,19 +145,27 @@ export function TimetableGrid({
         }
       }
 
-      // Clear swapping flag after a brief delay to allow the swap to complete
+      // Show warnings after swap (non-blocking)
       setTimeout(() => {
-        setIsSwapping(false);
-        // Reset drag detection flag after a short delay
-        setTimeout(() => setHasActuallyDragged(false), 100);
-      }, 0);
+        if (isTargetFull && onSwapWarning) {
+          onSwapWarning(
+            `${targetCourse.course.courseCode} - ${targetSection.sectionType} ${targetSection.sectionId} has no available seats.`,
+            'full'
+          );
+        }
+        
+        if (wouldCauseConflict && onSwapWarning) {
+          onSwapWarning(
+            `Swapping to ${targetCourse.course.courseCode} - ${targetSection.sectionType} ${targetSection.sectionId} would cause a schedule conflict.`,
+            'conflict'
+          );
+        }
+      }, 100);
     });
   };
 
   const handleDragCancel = () => {
     setDraggedCourse(null);
-    setHasActuallyDragged(false);
-    setDragStartPos(null);
   };
 
   // Ghost Section Block Component (appears when dragging a lecture or tutorial)
@@ -244,7 +210,8 @@ export function TimetableGrid({
           'pointer-events-auto cursor-pointer',
           'flex flex-col items-center justify-center',
           'px-1.5 py-1',
-          isOver && 'border-yellow-400 bg-yellow-400/40 scale-[1.03] shadow-xl ring-2 ring-yellow-400/50 transition-all duration-200',
+          isOver && 'border-yellow-400 bg-yellow-400/40 scale-[1.05] shadow-xl ring-4 ring-yellow-400/50',
+          !isOver && 'hover:scale-[1.02] hover:shadow-md',
         )}
         style={{
           ...style,
@@ -252,6 +219,7 @@ export function TimetableGrid({
             borderColor: `${colorWithOpacity}99`,
             backgroundColor: `${colorWithOpacity}1A`,
           }),
+          transition: isOver ? 'all 0.2s ease-out' : 'transform 0.2s ease-out, box-shadow 0.2s ease-out',
         }}
       >
         <div className="text-xs font-bold text-gray-900 dark:text-white text-center">
@@ -279,8 +247,6 @@ export function TimetableGrid({
     day, 
     slot,
     isDraggedCourse,
-    isSwapping: isSwappingProp,
-    hasActuallyDragged: hasActuallyDraggedProp,
   }: { 
     selectedCourse: SelectedCourse; 
     blockId: string; 
@@ -288,8 +254,6 @@ export function TimetableGrid({
     day: DayOfWeek; 
     slot: any;
     isDraggedCourse: boolean;
-    isSwapping: boolean;
-    hasActuallyDragged: boolean;
   }) => {
     const [isLocalHovered, setIsLocalHovered] = useState(false);
     const uniqueId = `${selectedCourse.course.courseCode}-${selectedCourse.selectedSection.sectionId}-${blockId}`;
@@ -309,15 +273,21 @@ export function TimetableGrid({
         const lectureCount = courseData.sections.filter((s: any) => s.sectionType === 'Lecture').length;
         hasAlternatives = lectureCount > 1;
       } else if (selectedCourse.selectedSection.sectionType === 'Tutorial') {
-        // Count tutorials with same parentLecture - need at least 2 to enable drag
+        // Count tutorials with same parentLecture OR no parentLecture (universal) - need at least 2 to enable drag
         const tutorialCount = courseData.sections.filter(
-          (s: any) => s.sectionType === 'Tutorial' && s.parentLecture === selectedCourse.selectedSection.parentLecture
+          (s: any) => 
+            s.sectionType === 'Tutorial' && 
+            (s.parentLecture === selectedCourse.selectedSection.parentLecture || 
+             (s.parentLecture === undefined && selectedCourse.selectedSection.parentLecture === undefined))
         ).length;
         hasAlternatives = tutorialCount > 1;
       } else if (selectedCourse.selectedSection.sectionType === 'Lab') {
-        // Count labs with same parentLecture - need at least 2 to enable drag
+        // Count labs with same parentLecture OR no parentLecture (universal) - need at least 2 to enable drag
         const labCount = courseData.sections.filter(
-          (s: any) => s.sectionType === 'Lab' && s.parentLecture === selectedCourse.selectedSection.parentLecture
+          (s: any) => 
+            s.sectionType === 'Lab' && 
+            (s.parentLecture === selectedCourse.selectedSection.parentLecture ||
+             (s.parentLecture === undefined && selectedCourse.selectedSection.parentLecture === undefined))
         ).length;
         hasAlternatives = labCount > 1;
       }
@@ -369,15 +339,14 @@ export function TimetableGrid({
         {...(isDraggable ? listeners : {})}
         className={cn(
           'absolute left-1 right-1 rounded-lg cursor-pointer group',
-          !isSwappingProp && 'timetable-block-enter',
           'hover:shadow-xl hover:scale-[1.02]',
           'text-white flex flex-col',
           'px-1.5 py-1',
           'overflow-visible',
           isFull && 'border-2 border-red-500 dark:border-red-400 shadow-[0_0_0_1px_rgba(239,68,68,0.5)]',
           hasConflict && 'conflict-pattern border-2 border-yellow-500 dark:border-yellow-400 ring-2 ring-yellow-500/50',
-          isDragging && 'opacity-30',
-          isValidDropTarget && 'ring-4 ring-yellow-400 scale-105 shadow-2xl',
+          isDragging && 'opacity-0',
+          isValidDropTarget && 'ring-4 ring-yellow-400 scale-105 shadow-2xl animate-pulse',
           isDraggable && 'cursor-grab active:cursor-grabbing',
           !isDraggable && enableDragDrop && 'cursor-default',
         )}
@@ -396,14 +365,18 @@ export function TimetableGrid({
           // More transparency for conflicts so overlapping courses are clearly visible
           // Full opacity when hovered
           opacity: hasConflict ? (isLocalHovered ? 1 : 0.85) : 1,
-          transition: isSwappingProp ? 'none' : isDragging ? 'opacity 0.2s' : 'top 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease, z-index 0.1s ease, opacity 0.2s ease',
+          // Always use smooth transitions for position changes
+          transition: isDragging 
+            ? 'none' 
+            : 'top 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s ease, transform 0.2s ease-out, box-shadow 0.2s ease-out, opacity 0.2s ease-out',
+          willChange: 'top, height, left',
         }}
         onMouseEnter={() => setIsLocalHovered(true)}
         onMouseLeave={() => setIsLocalHovered(false)}
       >
         {/* Drag handle - only show if draggable */}
         {isDraggable && (
-          <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity">
             <GripVertical className="w-3 h-3 text-white drop-shadow-lg" />
           </div>
         )}
@@ -432,12 +405,6 @@ export function TimetableGrid({
         {/* Content */}
         <div 
           className="overflow-hidden flex flex-col justify-center h-full relative"
-          onClick={(e) => {
-            // Only trigger click if user didn't actually drag
-            if (!hasActuallyDraggedProp) {
-              onCourseClick?.(selectedCourse);
-            }
-          }}
         >
           <div className="flex items-center gap-1">
             <div className="font-semibold text-xs leading-tight truncate flex-1">
@@ -455,9 +422,11 @@ export function TimetableGrid({
             )}
           </div>
           <div className="text-[10px] leading-tight opacity-90 truncate flex items-center gap-1">
-            {selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' : 'TUT'} {selectedCourse.selectedSection.sectionId}
-            {selectedCourse.selectedSection.sectionType === 'Lecture' && (
-              <RefreshCw className="w-3 h-3 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+            {selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' : selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' : 'LAB'} {selectedCourse.selectedSection.sectionId}
+            {isDraggable && (
+              <div title="Swappable - Drag to swap" className="flex-shrink-0">
+                <RefreshCw className="w-3 h-3 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+              </div>
             )}
           </div>
         </div>
@@ -530,8 +499,6 @@ export function TimetableGrid({
                         day={day}
                         slot={slot}
                         isDraggedCourse={draggedCourse === selectedCourse}
-                        isSwapping={isSwapping}
-                        hasActuallyDragged={hasActuallyDragged}
                       />
                     );
                   })
@@ -597,24 +564,35 @@ export function TimetableGrid({
       <>
         <DndContext
           onDragStart={handleDragStart}
-          onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
           {content}
           
-          <DragOverlay dropAnimation={null}>
+          <DragOverlay 
+            dropAnimation={{
+              duration: 0,
+              easing: 'ease',
+            }}
+          >
             {draggedCourse && (
               <div 
-                className="text-white p-2 rounded-lg shadow-xl opacity-90"
+                className="text-white p-2.5 rounded-lg shadow-2xl border-2 border-white/30 backdrop-blur-sm"
                 style={{ 
                   backgroundColor: draggedCourse.color || '#8B5CF6',
-                  transition: 'none',
+                  transform: 'scale(1.05)',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
                 }}
               >
-                <div className="font-bold">{draggedCourse.course.courseCode}</div>
-                <div className="text-xs">
+                <div className="flex items-center gap-2 mb-1">
+                  <GripVertical className="w-4 h-4 opacity-70" />
+                  <div className="font-bold text-sm">{draggedCourse.course.courseCode}</div>
+                </div>
+                <div className="text-xs opacity-90 ml-6">
                   {draggedCourse.selectedSection.sectionType} {draggedCourse.selectedSection.sectionId}
+                </div>
+                <div className="text-[10px] opacity-75 mt-1 ml-6">
+                  {draggedCourse.selectedSection.timeSlots[0]?.startTime} - {draggedCourse.selectedSection.timeSlots[0]?.endTime}
                 </div>
               </div>
             )}

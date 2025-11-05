@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Course, Section, SelectedCourse, TermType, SchedulePreferences, DayOfWeek } from '@/types';
 import { mockCourses } from '@/data/mock-courses';
 import TimetableGrid from '@/components/TimetableGrid';
@@ -62,6 +62,15 @@ export default function Home() {
   const [generatedSchedules, setGeneratedSchedules] = useState<GeneratedSchedule[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedScheduleIndex, setSelectedScheduleIndex] = useState<number>(0);
+
+  // Sync selectedCourseCodes with selectedCourses (for manual mode)
+  // This keeps the preferences bar in sync when switching modes
+  useEffect(() => {
+    const courseCodes = Array.from(new Set(
+      selectedCourses.map(sc => sc.course.courseCode)
+    ));
+    setSelectedCourseCodes(courseCodes);
+  }, [selectedCourses]);
 
   // Term display names
   const termNames: Record<TermType, string> = {
@@ -912,14 +921,14 @@ export default function Home() {
                         key={code}
                         className="group flex items-center gap-1 px-2 py-1 bg-purple-600 dark:bg-purple-700 rounded-md whitespace-nowrap flex-shrink-0"
                       >
-                        <span className="text-[10px] font-bold text-white">
+                        <span className="text-xs font-bold text-white">
                           {code}
                         </span>
                         <button
                           onClick={() => handleToggleCourseSelection(code)}
                           className="text-white/70 hover:text-white hover:bg-white/20 rounded-full p-0.5 transition-all"
                         >
-                          <X className="w-2.5 h-2.5" />
+                          <X className="w-3 h-3" />
                         </button>
                       </div>
                     ))}

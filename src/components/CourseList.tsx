@@ -3,7 +3,7 @@
 import { Course, Section, SelectedCourse } from '@/types';
 import { hasAvailableSeats } from '@/lib/schedule-utils';
 import { cn } from '@/lib/utils';
-import { Plus, Trash2, ChevronDown, ChevronRight, Info, AlertCircle, Check } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Info, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 interface CourseListItemProps {
@@ -370,6 +370,12 @@ function CourseListItem({
                                         <span className="font-semibold text-gray-900 dark:text-white text-xs">
                                           Tutorial {tutorial.sectionId}
                                         </span>
+                                        {isTutSelected && tutorials.length > 1 && (
+                                          <span className="text-[9px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5">
+                                            <RefreshCw className="w-2.5 h-2.5" />
+                                            Swappable
+                                          </span>
+                                        )}
                                         {isTutFull && !isTutSelected && (
                                           <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-medium">
                                             ⚠️ Full
@@ -455,6 +461,12 @@ function CourseListItem({
                                         <span className="font-semibold text-gray-900 dark:text-white text-xs">
                                           Lab {lab.sectionId}
                                         </span>
+                                        {isLabSelected && labs.length > 1 && (
+                                          <span className="text-[9px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5">
+                                            <RefreshCw className="w-2.5 h-2.5" />
+                                            Swappable
+                                          </span>
+                                        )}
                                         {isLabFull && !isLabSelected && (
                                           <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-medium">
                                             ⚠️ Full
