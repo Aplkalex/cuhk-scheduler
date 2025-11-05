@@ -13,6 +13,7 @@ import {
   type GeneratedSchedule,
   type ScheduleGenerationOptions,
 } from '../schedule-generator';
+import { testCourses } from '@/data/test-courses';
 
 // ============================================================================
 // MOCK DATA
@@ -566,6 +567,72 @@ describe('Schedule Generation Algorithm', () => {
     
   });
   
+});
+
+// ============================================================================
+// 4. REGRESSION: LARGE COURSE DATASET PREFERENCES
+// ============================================================================
+
+describe('Preference alignment on large dataset', () => {
+  const heavyCourseSet: Course[] = testCourses.filter(course =>
+    ['ECON 102', 'STAT 305', 'CPSC 221'].includes(course.courseCode)
+  );
+
+  function getTopSchedule(preference: ScheduleGenerationOptions['preference']) {
+    const schedules = generateSchedules(heavyCourseSet, { preference, maxResults: 200 });
+    expect(schedules.length).toBeGreaterThan(0);
+    return schedules[0];
+  }
+
+  test('Days off preference yields at least two free days', () => {
+    const top = getTopSchedule('daysOff');
+    console.log('🔍 DaysOff metadata', top.metadata);
+    console.log('🔍 DaysOff sections', top.sections.map(s => `${s.course.courseCode}-${s.selectedSection.sectionId}`));
+    expect(top.metadata?.freeDays ?? 0).toBeGreaterThanOrEqual(2);
+    expect(top.metadata?.daysUsed ?? 5).toBeLessThanOrEqual(3);
+  });
+
+  test('Short breaks avoid long idle stretches and early starts', () => {
+    const top = getTopSchedule('shortBreaks');
+    console.log('🔍 ShortBreaks metadata', top.metadata);
+    console.log('🔍 ShortBreaks sections', top.sections.map(s => `${s.course.courseCode}-${s.selectedSection.sectionId}`));
+    expect(top.metadata?.maxGapMinutes ?? Number.MAX_SAFE_INTEGER).toBeLessThanOrEqual(180);
+    expect(top.metadata?.freeDays ?? 0).toBeGreaterThanOrEqual(1);
+    expect(top.metadata?.earliestStart ?? 0).toBeGreaterThanOrEqual(540);
+  });
+
+  test('Long breaks maximize extended gaps purposefully', () => {
+    const top = getTopSchedule('longBreaks');
+    console.log('🔍 LongBreaks metadata', top.metadata);
+    console.log('🔍 LongBreaks sections', top.sections.map(s => `${s.course.courseCode}-${s.selectedSection.sectionId}`));
+    expect(top.metadata?.longBreakCount ?? 0).toBeGreaterThanOrEqual(2);
+    expect(top.metadata?.totalLongBreakMinutes ?? 0).toBeGreaterThanOrEqual(240);
+  });
+
+  test('Consistent start keeps start times tightly clustered', () => {
+    const top = getTopSchedule('consistentStart');
+    console.log('🔍 Consistent metadata', top.metadata);
+    console.log('🔍 Consistent sections', top.sections.map(s => `${s.course.courseCode}-${s.selectedSection.sectionId}`));
+    expect(top.metadata?.startVariance ?? Number.MAX_SAFE_INTEGER).toBeLessThanOrEqual(500);
+    expect(top.metadata?.freeDays ?? 0).toBeGreaterThanOrEqual(1);
+  });
+
+  test('Start late avoids morning classes', () => {
+    const top = getTopSchedule('startLate');
+    console.log('🔍 StartLate metadata', top.metadata);
+    console.log('🔍 StartLate sections', top.sections.map(s => `${s.course.courseCode}-${s.selectedSection.sectionId}`));
+    expect(top.metadata?.earliestStart ?? 0).toBeGreaterThanOrEqual(660);
+    expect(top.metadata?.avgStartTime ?? 0).toBeGreaterThanOrEqual(720);
+  });
+
+  test('End early finishes afternoons quickly', () => {
+    const top = getTopSchedule('endEarly');
+    console.log('🔍 EndEarly metadata', top.metadata);
+    console.log('🔍 EndEarly sections', top.sections.map(s => `${s.course.courseCode}-${s.selectedSection.sectionId}`));
+  expect(top.metadata?.avgEndTime ?? Number.MAX_SAFE_INTEGER).toBeLessThanOrEqual(1020);
+  expect(top.metadata?.latestEnd ?? Number.MAX_SAFE_INTEGER).toBeLessThanOrEqual(1020);
+    expect(top.metadata?.freeDays ?? 0).toBeGreaterThanOrEqual(1);
+  });
 });
 
 // ============================================================================

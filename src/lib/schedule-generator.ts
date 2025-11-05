@@ -12,17 +12,51 @@ import { timeSlotsOverlap, hasAvailableSeats } from './schedule-utils';
 // TYPES
 // ============================================================================
 
+export type ScheduleMetadata = {
+  totalGapMinutes: number;
+  gapCount: number;
+  maxGapMinutes: number;
+  totalCampusSpan: number;
+  daysUsed: number;
+  freeDays: number;
+  avgStartTime: number;
+  avgEndTime: number;
+  startVariance: number;
+  longBreakCount: number;
+  totalLongBreakMinutes: number;
+  earliestStart: number;
+  latestEnd: number;
+  seatScore: number;
+  preferenceScore: number;
+};
+
 export type GeneratedSchedule = {
   sections: SelectedCourse[];
   score: number;
-  metadata?: {
-    totalGapMinutes?: number;
-    daysUsed?: number;
-    avgStartTime?: number;
-    avgEndTime?: number;
-    freeDays?: number;
-    longBreakCount?: number;
-  };
+  metadata?: ScheduleMetadata;
+};
+
+type ScheduleMetrics = {
+  totalGapMinutes: number;
+  gapCount: number;
+  maxGapMinutes: number;
+  totalCampusSpan: number;
+  daysUsed: number;
+  freeDays: number;
+  avgStartTime: number;
+  avgEndTime: number;
+  startVariance: number;
+  longBreakCount: number;
+  totalLongBreakMinutes: number;
+  earliestStart: number;
+  latestEnd: number;
+};
+
+type EvaluatedSchedule = {
+  sections: SelectedCourse[];
+  preferenceScore: number;
+  seatScore: number;
+  metrics: ScheduleMetrics;
 };
 
 export type ScheduleGenerationOptions = {
@@ -128,65 +162,49 @@ export function generateSchedules(
 
   // OPTIMIZATION 2: Generate with early conflict pruning
   console.time('⏱️ Combination generation with pruning');
+  const combinationTarget = Math.max(maxResults * 20, 2000);
   const validSchedules = generateValidCombinationsWithPruning(
     coursesWithFilteredSections,
     excludeFullSections,
-    maxResults * 5 // Generate more than needed to have good selection after scoring
+    combinationTarget // Generate more than needed to have good selection after scoring
   );
   console.timeEnd('⏱️ Combination generation with pruning');
 
   console.log(`✅ Generated ${validSchedules.length} valid schedules (after pruning)`);
 
-  // Step 3: Score each schedule based on preference AND seat availability
-  console.time('⏱️ Scoring');
-  const scoredSchedules = validSchedules.map(sections => {
-    // Base score from user preference
-    let score = options.preference 
-      ? calculateScore(sections, options.preference)
-      : 0;
-    
-    // calculateScore now includes seat availability bonus internally
-    
+  // Step 3: Evaluate schedules with aggregated metrics and scores
+  console.time('⏱️ Evaluation');
+  const evaluatedSchedules: EvaluatedSchedule[] = validSchedules.map(sections => {
+    const metrics = calculateScheduleMetrics(sections);
+    const preferenceScore = calculatePreferenceScore(metrics, options.preference ?? null);
+    const seatScore = calculateSeatAvailabilityScore(sections);
+
     return {
       sections,
-      score,
-      metadata: undefined, // Calculate metadata only for top results
+      preferenceScore,
+      seatScore,
+      metrics,
     };
   });
-  console.timeEnd('⏱️ Scoring');
+  console.timeEnd('⏱️ Evaluation');
 
-  // Step 4: Sort by score (includes seat availability)
+  // Step 4: Sort lexicographically using preference-aware comparator
   console.time('⏱️ Sorting');
-  scoredSchedules.sort((a, b) => b.score - a.score);
+  evaluatedSchedules.sort((a, b) => compareEvaluatedSchedules(a, b, options.preference ?? null));
   console.timeEnd('⏱️ Sorting');
 
-  // Step 5: Take top N and calculate metadata only for these
-  console.time('⏱️ Metadata calculation');
-  const topSchedules = scoredSchedules.slice(0, maxResults).map(schedule => {
-    const metadata = calculateMetadata(schedule.sections, options.preference);
-    return {
-      ...schedule,
-      metadata,
-    };
-  });
-  console.timeEnd('⏱️ Metadata calculation');
+  // Step 5: Slice top N and expose metadata for UI
+  const topEvaluated = evaluatedSchedules.slice(0, maxResults);
 
-  // Step 6: Final sort based on preference
-  // Only prioritize days off if user selected "daysOff" preference
-  topSchedules.sort((a, b) => {
-    if (options.preference === 'daysOff') {
-      // For "Days Off" preference: sort by free days first, then score
-      const freeDaysA = a.metadata?.freeDays ?? 0;
-      const freeDaysB = b.metadata?.freeDays ?? 0;
-      
-      if (freeDaysB !== freeDaysA) {
-        return freeDaysB - freeDaysA;
-      }
-    }
-    
-    // For all other preferences: sort by score only
-    return b.score - a.score;
-  });
+  const topSchedules: GeneratedSchedule[] = topEvaluated.map(item => ({
+    sections: item.sections,
+    score: item.preferenceScore,
+    metadata: {
+      ...item.metrics,
+      seatScore: item.seatScore,
+      preferenceScore: item.preferenceScore,
+    },
+  }));
 
   console.timeEnd('⏱️ Total generation time');
   console.log(`✨ Returning ${topSchedules.length} optimized schedules`);
@@ -739,186 +757,104 @@ function hasConflicts(schedule: SelectedCourse[]): boolean {
 // ============================================================================
 
 /**
- * Calculates score for a schedule based on preference
- * Higher score = better match to preference
- * Also adds seat availability score to all preferences
+ * Calculates raw preference score using aggregated metrics.
+ * Higher score should reflect better alignment with the desired preference.
  */
-function calculateScore(schedule: SelectedCourse[], preference: string): number {
-  let preferenceScore = 0;
-  
+function calculatePreferenceScore(metrics: ScheduleMetrics, preference: string | null): number {
+  if (!preference) {
+    return metrics.freeDays * 1_000 - metrics.totalGapMinutes * 10;
+  }
+
   switch (preference) {
-    case 'shortBreaks':
-      preferenceScore = scoreShortBreaks(schedule);
-      break;
-    case 'longBreaks':
-      preferenceScore = scoreLongBreaks(schedule);
-      break;
-    case 'consistentStart':
-      preferenceScore = scoreConsistentStart(schedule);
-      break;
-    case 'startLate':
-      preferenceScore = scoreStartLate(schedule);
-      break;
-    case 'endEarly':
-      preferenceScore = scoreEndEarly(schedule);
-      break;
-    case 'daysOff':
-      preferenceScore = scoreDaysOff(schedule);
-      break;
+    case 'shortBreaks': {
+      const freeDayBoost = metrics.freeDays * 120_000;
+      const gapPenalty = metrics.totalGapMinutes * 1_000;
+      const maxGapPenalty = metrics.maxGapMinutes * 250;
+      const daySpanPenalty = metrics.totalCampusSpan * 120;
+      const earlyStartPenalty = Math.max(0, 600 - metrics.earliestStart) * 300;
+      return (
+        freeDayBoost
+        - gapPenalty
+        - maxGapPenalty
+        - daySpanPenalty
+        - earlyStartPenalty
+        + metrics.avgStartTime * 150
+      );
+    }
+    case 'longBreaks': {
+      const longBreakReward = metrics.longBreakCount * 400_000 + metrics.totalLongBreakMinutes * 1_200;
+      const consolidationPenalty = metrics.totalGapMinutes * 400;
+      const spreadPenalty = metrics.totalCampusSpan * 80;
+      return (
+        longBreakReward
+        - consolidationPenalty
+        - spreadPenalty
+        + metrics.freeDays * 50_000
+      );
+    }
+    case 'consistentStart': {
+      const variancePenalty = metrics.startVariance * 4_000;
+      const peakWindow = Math.abs(metrics.avgStartTime - 720) * 150; // prefer around noon start
+      const freeDayBoost = metrics.freeDays * 80_000;
+      const gapPenalty = metrics.totalGapMinutes * 300;
+      return (
+        2_000_000
+        - variancePenalty
+        - peakWindow
+        - gapPenalty
+        - metrics.maxGapMinutes * 120
+        + freeDayBoost
+      );
+    }
+    case 'startLate': {
+      const lateStartReward = metrics.avgStartTime * 700 + metrics.earliestStart * 500;
+      const freeDayBoost = metrics.freeDays * 90_000;
+      const morningPenalty = Math.max(0, 660 - metrics.earliestStart) * 400;
+      return (
+        lateStartReward
+        + freeDayBoost
+        - metrics.totalGapMinutes * 220
+        - morningPenalty
+        - metrics.totalCampusSpan * 90
+      );
+    }
+    case 'endEarly': {
+      const earlyEndReward = (1440 - metrics.avgEndTime) * 500 + (1440 - metrics.latestEnd) * 500;
+      const finishBonus = Math.max(0, 1020 - metrics.latestEnd) * 800;
+      const freeDayBoost = metrics.freeDays * 120_000;
+      const extraDayPenalty = Math.max(0, metrics.daysUsed - 4) * 180_000;
+      const latestPenalty = Math.max(0, metrics.latestEnd - 1020) * 10_000;
+      const avgPenalty = Math.max(0, metrics.avgEndTime - 990) * 3_000;
+      const maxGapPenalty = Math.max(0, metrics.maxGapMinutes - 180) * 600;
+      return (
+        earlyEndReward
+        + finishBonus
+        + freeDayBoost
+        - metrics.totalGapMinutes * 180
+        - metrics.totalCampusSpan * 90
+        - latestPenalty
+        - avgPenalty
+        - maxGapPenalty
+        - extraDayPenalty
+      );
+    }
+    case 'daysOff': {
+      const freeDayReward = metrics.freeDays * 1_200_000;
+      const dayUsagePenalty = metrics.daysUsed * 200_000;
+      const spreadPenalty = metrics.totalCampusSpan * 200;
+      const startPenalty = Math.max(0, 600 - metrics.earliestStart) * 200;
+      return (
+        freeDayReward
+        - dayUsagePenalty
+        - spreadPenalty
+        - metrics.totalGapMinutes * 500
+        - startPenalty
+        + (1440 - metrics.avgEndTime) * 120
+      );
+    }
     default:
-      preferenceScore = 0;
+      return metrics.freeDays * 1_000 - metrics.totalGapMinutes * 10;
   }
-  
-  // Add seat availability score to all preferences
-  const seatScore = calculateSeatAvailabilityScore(schedule);
-  
-  return preferenceScore + seatScore;
-}
-
-/**
- * Short Breaks: Minimize gaps between classes
- * Lower total gap = higher score
- * Also penalize number of gaps and time span on campus
- * Bonus for having free days (compact schedule on fewer days)
- */
-function scoreShortBreaks(schedule: SelectedCourse[]): number {
-  const daySchedules = groupByDay(schedule);
-  let totalScore = 0;
-
-  for (const [day, slots] of Object.entries(daySchedules)) {
-    if (slots.length === 0) continue;
-
-    const sorted = slots.sort((a, b) => 
-      timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-    );
-
-    // Calculate total gap time for this day
-    let dayGapTime = 0;
-    let gapCount = 0;
-    let longGapPenalty = 0;
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const endTime = timeToMinutes(sorted[i].endTime);
-      const nextStartTime = timeToMinutes(sorted[i + 1].startTime);
-      const gap = Math.max(0, nextStartTime - endTime);
-      if (gap > 0) {
-        dayGapTime += gap;
-        gapCount++;
-        // Extra penalty for very long gaps (>90 min) - these are really bad for "short breaks"
-        if (gap > 90) {
-          longGapPenalty += (gap - 90) * 100; // Severe penalty for gaps beyond 90 min (100 pts/min)
-        }
-      }
-    }
-
-    // Calculate time span on campus (first class start to last class end)
-    const firstStart = timeToMinutes(sorted[0].startTime);
-    const lastEnd = timeToMinutes(sorted[sorted.length - 1].endTime);
-    const campusTimeSpan = lastEnd - firstStart;
-
-    // Scoring (all penalties to subtract from base score)
-    let dayScore = 10000;
-    dayScore -= dayGapTime * 20; // Penalize total gap time (20 pts per minute)
-    dayScore -= gapCount * 600; // Penalize number of gaps (600 pts per gap)
-    dayScore -= campusTimeSpan * 2; // Penalize long time on campus (2 pts per minute)
-    dayScore -= longGapPenalty; // Extra severe penalty for gaps > 90 minutes
-
-    totalScore += Math.max(0, dayScore);
-  }
-
-  // Add bonus for free days with diminishing returns
-  // 1st free day = 30000 pts (3x a perfect day!), 2nd = 8000 pts, 3rd+ = 2000 pts each
-  // This STRONGLY encourages getting free days - worth sacrificing some seat availability
-  const daysUsed = getUniqueDays(schedule);
-  const freeDays = 5 - daysUsed.length;
-  let freeDayBonus = 0;
-  if (freeDays >= 1) freeDayBonus += 30000; // First free day - HUGE bonus!
-  if (freeDays >= 2) freeDayBonus += 8000;  // Second free day
-  if (freeDays >= 3) freeDayBonus += (freeDays - 2) * 2000; // Additional free days
-  
-  return totalScore + freeDayBonus;
-}
-
-/**
- * Long Breaks: Maximize number of breaks >= 60 minutes
- * More long breaks = higher score
- */
-function scoreLongBreaks(schedule: SelectedCourse[]): number {
-  const longBreakCount = countLongBreaks(schedule);
-  return longBreakCount * 2000; // Each long break = 2000 points (increased weight)
-}
-
-/**
- * Consistent Start: Minimize variance in daily start times
- * Also minimize gaps between classes for compact schedules
- * Prefer later start times to avoid waking up early
- * Lower variance + fewer gaps + later start = higher score
- */
-function scoreConsistentStart(schedule: SelectedCourse[]): number {
-  const variance = calculateStartTimeVariance(schedule);
-  
-  // Calculate total gaps across all days
-  const daySchedules = groupByDay(schedule);
-  let totalGapTime = 0;
-  
-  for (const [day, slots] of Object.entries(daySchedules)) {
-    if (slots.length === 0) continue;
-    
-    const sorted = slots.sort((a, b) => 
-      timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-    );
-    
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const endTime = timeToMinutes(sorted[i].endTime);
-      const nextStartTime = timeToMinutes(sorted[i + 1].startTime);
-      const gap = Math.max(0, nextStartTime - endTime);
-      totalGapTime += gap;
-    }
-  }
-  
-  // Calculate average start time to prefer later starts
-  const avgStartTime = calculateAverageStartTime(schedule);
-  
-  // Primary: consistent start times (50000 points for perfect consistency)
-  // Secondary: minimize gaps (subtract 5 points per minute of gap)
-  // Tertiary: prefer later start times (add 2 points per minute after 9am)
-  // This ensures L2A (16:00) beats L2D (11:00) when consistency is equal
-  const consistencyScore = 50000 / (1 + variance);
-  const gapPenalty = totalGapTime * 5;
-  const lateStartBonus = avgStartTime * 2; // Bonus for starting later
-  
-  return consistencyScore - gapPenalty + lateStartBonus;
-}
-
-/**
- * Start Late: Maximize average start time
- * Later start = higher score
- */
-function scoreStartLate(schedule: SelectedCourse[]): number {
-  const avgStartTime = calculateAverageStartTime(schedule);
-  // Start time in minutes (9:00 = 540, 14:00 = 840)
-  // Score = start time directly (later = higher)
-  return avgStartTime;
-}
-
-/**
- * End Early: Minimize average end time
- * Earlier end = higher score
- */
-function scoreEndEarly(schedule: SelectedCourse[]): number {
-  const avgEndTime = calculateAverageEndTime(schedule);
-  // Convert to score: earlier = higher
-  // Max end time ~= 20:00 (1200 minutes), so 1200 - avgEnd
-  return Math.max(0, 1200 - avgEndTime);
-}
-
-/**
- * Days Off: Maximize number of free weekdays
- * More free days = higher score
- */
-function scoreDaysOff(schedule: SelectedCourse[]): number {
-  const daysUsed = getUniqueDays(schedule);
-  const freeDays = 5 - daysUsed.length; // 5 weekdays
-  return freeDays * 10000; // Each free day = 10000 points (increased weight)
 }
 
 /**
@@ -935,148 +871,233 @@ function calculateSeatAvailabilityScore(schedule: SelectedCourse[]): number {
     totalSections++;
     if (hasAvailableSeats(selectedCourse.selectedSection)) {
       availableSections++;
-      // Each section with available seats = 500 bonus points
-      score += 500;
+      // Each section with available seats = moderate bonus points
+      score += 120;
     }
   }
 
   // Additional bonus if ALL sections have available seats
   if (availableSections === totalSections && totalSections > 0) {
-    score += 5000; // Huge bonus for fully available schedules
+    score += 600; // Modest bonus for fully available schedules
   }
 
   return score;
+}
+
+function compareEvaluatedSchedules(
+  a: EvaluatedSchedule,
+  b: EvaluatedSchedule,
+  preference: ScheduleGenerationOptions['preference']
+): number {
+  if (b.preferenceScore !== a.preferenceScore) {
+    return b.preferenceScore - a.preferenceScore;
+  }
+
+  if (b.seatScore !== a.seatScore) {
+    return b.seatScore - a.seatScore;
+  }
+
+  const metricsA = a.metrics;
+  const metricsB = b.metrics;
+
+  switch (preference) {
+    case 'daysOff':
+      if (metricsB.freeDays !== metricsA.freeDays) {
+        return metricsB.freeDays - metricsA.freeDays;
+      }
+      if (metricsA.daysUsed !== metricsB.daysUsed) {
+        return metricsA.daysUsed - metricsB.daysUsed;
+      }
+      if (metricsA.avgEndTime !== metricsB.avgEndTime) {
+        return metricsA.avgEndTime - metricsB.avgEndTime;
+      }
+      break;
+    case 'shortBreaks':
+      if (metricsA.totalGapMinutes !== metricsB.totalGapMinutes) {
+        return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
+      }
+      if (metricsA.maxGapMinutes !== metricsB.maxGapMinutes) {
+        return metricsA.maxGapMinutes - metricsB.maxGapMinutes;
+      }
+      if (metricsB.freeDays !== metricsA.freeDays) {
+        return metricsB.freeDays - metricsA.freeDays;
+      }
+      if (metricsB.avgStartTime !== metricsA.avgStartTime) {
+        return metricsB.avgStartTime - metricsA.avgStartTime;
+      }
+      break;
+    case 'longBreaks':
+      if (metricsB.totalLongBreakMinutes !== metricsA.totalLongBreakMinutes) {
+        return metricsB.totalLongBreakMinutes - metricsA.totalLongBreakMinutes;
+      }
+      if (metricsB.longBreakCount !== metricsA.longBreakCount) {
+        return metricsB.longBreakCount - metricsA.longBreakCount;
+      }
+      if (metricsB.freeDays !== metricsA.freeDays) {
+        return metricsB.freeDays - metricsA.freeDays;
+      }
+      break;
+    case 'consistentStart':
+      if (metricsA.startVariance !== metricsB.startVariance) {
+        return metricsA.startVariance - metricsB.startVariance;
+      }
+      if (metricsA.avgStartTime !== metricsB.avgStartTime) {
+        return metricsA.avgStartTime - metricsB.avgStartTime;
+      }
+      if (metricsB.freeDays !== metricsA.freeDays) {
+        return metricsB.freeDays - metricsA.freeDays;
+      }
+      break;
+    case 'startLate':
+      if (metricsB.avgStartTime !== metricsA.avgStartTime) {
+        return metricsB.avgStartTime - metricsA.avgStartTime;
+      }
+      if (metricsB.earliestStart !== metricsA.earliestStart) {
+        return metricsB.earliestStart - metricsA.earliestStart;
+      }
+      if (metricsB.freeDays !== metricsA.freeDays) {
+        return metricsB.freeDays - metricsA.freeDays;
+      }
+      break;
+    case 'endEarly':
+      if (metricsA.latestEnd !== metricsB.latestEnd) {
+        return metricsA.latestEnd - metricsB.latestEnd;
+      }
+      if (metricsA.avgEndTime !== metricsB.avgEndTime) {
+        return metricsA.avgEndTime - metricsB.avgEndTime;
+      }
+      if (metricsA.maxGapMinutes !== metricsB.maxGapMinutes) {
+        return metricsA.maxGapMinutes - metricsB.maxGapMinutes;
+      }
+      if (metricsB.freeDays !== metricsA.freeDays) {
+        return metricsB.freeDays - metricsA.freeDays;
+      }
+      break;
+    default:
+      break;
+  }
+
+  if (metricsB.freeDays !== metricsA.freeDays) {
+    return metricsB.freeDays - metricsA.freeDays;
+  }
+
+  if (metricsA.totalGapMinutes !== metricsB.totalGapMinutes) {
+    return metricsA.totalGapMinutes - metricsB.totalGapMinutes;
+  }
+
+  if (metricsA.daysUsed !== metricsB.daysUsed) {
+    return metricsA.daysUsed - metricsB.daysUsed;
+  }
+
+  if (metricsA.avgStartTime !== metricsB.avgStartTime) {
+    return metricsA.avgStartTime - metricsB.avgStartTime;
+  }
+
+  const fingerprintA = a.sections
+    .map(selection => `${selection.course.courseCode}-${selection.selectedSection.sectionId}`)
+    .join('|');
+  const fingerprintB = b.sections
+    .map(selection => `${selection.course.courseCode}-${selection.selectedSection.sectionId}`)
+    .join('|');
+
+  return fingerprintA.localeCompare(fingerprintB);
+}
+
+/**
+ * Calculate aggregated metrics required for ranking schedules
+ */
+function calculateScheduleMetrics(schedule: SelectedCourse[]): ScheduleMetrics {
+  const daySchedules = groupByDay(schedule);
+  let totalGapMinutes = 0;
+  let gapCount = 0;
+  let maxGapMinutes = 0;
+  let totalCampusSpan = 0;
+  let longBreakCount = 0;
+  let totalLongBreakMinutes = 0;
+  let earliestStart = Infinity;
+  let latestEnd = -Infinity;
+
+  const dayStarts: number[] = [];
+  const dayEnds: number[] = [];
+
+  for (const slots of Object.values(daySchedules)) {
+    if (slots.length === 0) {
+      continue;
+    }
+
+    const sorted = [...slots].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+    const dayStart = timeToMinutes(sorted[0].startTime);
+    const dayEnd = timeToMinutes(sorted[sorted.length - 1].endTime);
+
+    dayStarts.push(dayStart);
+    dayEnds.push(dayEnd);
+
+    earliestStart = Math.min(earliestStart, dayStart);
+    latestEnd = Math.max(latestEnd, dayEnd);
+
+    totalCampusSpan += Math.max(0, dayEnd - dayStart);
+
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const endTime = timeToMinutes(sorted[i].endTime);
+      const nextStartTime = timeToMinutes(sorted[i + 1].startTime);
+      const gap = Math.max(0, nextStartTime - endTime);
+
+      if (gap > 0) {
+        totalGapMinutes += gap;
+        gapCount += 1;
+        maxGapMinutes = Math.max(maxGapMinutes, gap);
+
+        if (gap >= 60) {
+          longBreakCount += 1;
+          totalLongBreakMinutes += gap;
+        }
+      }
+    }
+  }
+
+  const daysUsed = dayStarts.length;
+  const freeDays = Math.max(0, 5 - daysUsed);
+
+  const sumStarts = dayStarts.reduce((acc, val) => acc + val, 0);
+  const sumEnds = dayEnds.reduce((acc, val) => acc + val, 0);
+
+  const avgStartTime = daysUsed > 0 ? sumStarts / daysUsed : 0;
+  const avgEndTime = daysUsed > 0 ? sumEnds / daysUsed : 0;
+
+  let startVariance = 0;
+  if (daysUsed > 0) {
+    startVariance = dayStarts.reduce((acc, val) => acc + Math.pow(val - avgStartTime, 2), 0) / daysUsed;
+  }
+
+  if (!Number.isFinite(earliestStart)) {
+    earliestStart = 0;
+  }
+  if (!Number.isFinite(latestEnd)) {
+    latestEnd = 0;
+  }
+
+  return {
+    totalGapMinutes,
+    gapCount,
+    maxGapMinutes,
+    totalCampusSpan,
+    daysUsed,
+    freeDays,
+    avgStartTime,
+    avgEndTime,
+    startVariance,
+    longBreakCount,
+    totalLongBreakMinutes,
+    earliestStart,
+    latestEnd,
+  };
 }
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
-/**
- * Calculate total gap minutes in a schedule
- */
-function calculateTotalGapMinutes(schedule: SelectedCourse[]): number {
-  const daySchedules = groupByDay(schedule);
-  let totalGap = 0;
-
-  for (const [day, slots] of Object.entries(daySchedules)) {
-    // Sort slots by start time
-    const sorted = slots.sort((a, b) => 
-      timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-    );
-
-    // Calculate gaps between consecutive classes
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const endTime = timeToMinutes(sorted[i].endTime);
-      const nextStartTime = timeToMinutes(sorted[i + 1].startTime);
-      const gap = Math.max(0, nextStartTime - endTime);
-      totalGap += gap;
-    }
-  }
-
-  return totalGap;
-}
-
-/**
- * Count breaks >= 60 minutes
- */
-function countLongBreaks(schedule: SelectedCourse[]): number {
-  const daySchedules = groupByDay(schedule);
-  let count = 0;
-
-  for (const [day, slots] of Object.entries(daySchedules)) {
-    const sorted = slots.sort((a, b) => 
-      timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-    );
-
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const endTime = timeToMinutes(sorted[i].endTime);
-      const nextStartTime = timeToMinutes(sorted[i + 1].startTime);
-      const gap = nextStartTime - endTime;
-      
-      if (gap >= 60) {
-        count++;
-      }
-    }
-  }
-
-  return count;
-}
-
-/**
- * Calculate variance in daily start times
- */
-function calculateStartTimeVariance(schedule: SelectedCourse[]): number {
-  const daySchedules = groupByDay(schedule);
-  const startTimes: number[] = [];
-
-  for (const [day, slots] of Object.entries(daySchedules)) {
-    if (slots.length > 0) {
-      const earliestStart = Math.min(...slots.map(s => timeToMinutes(s.startTime)));
-      startTimes.push(earliestStart);
-    }
-  }
-
-  if (startTimes.length === 0) return 0;
-
-  const mean = startTimes.reduce((a, b) => a + b, 0) / startTimes.length;
-  const variance = startTimes.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / startTimes.length;
-  
-  return variance;
-}
-
-/**
- * Calculate average start time across all days
- */
-function calculateAverageStartTime(schedule: SelectedCourse[]): number {
-  const daySchedules = groupByDay(schedule);
-  const startTimes: number[] = [];
-
-  for (const [day, slots] of Object.entries(daySchedules)) {
-    if (slots.length > 0) {
-      const earliestStart = Math.min(...slots.map(s => timeToMinutes(s.startTime)));
-      startTimes.push(earliestStart);
-    }
-  }
-
-  if (startTimes.length === 0) return 0;
-  
-  return startTimes.reduce((a, b) => a + b, 0) / startTimes.length;
-}
-
-/**
- * Calculate average end time across all days
- */
-function calculateAverageEndTime(schedule: SelectedCourse[]): number {
-  const daySchedules = groupByDay(schedule);
-  const endTimes: number[] = [];
-
-  for (const [day, slots] of Object.entries(daySchedules)) {
-    if (slots.length > 0) {
-      const latestEnd = Math.max(...slots.map(s => timeToMinutes(s.endTime)));
-      endTimes.push(latestEnd);
-    }
-  }
-
-  if (endTimes.length === 0) return 0;
-  
-  return endTimes.reduce((a, b) => a + b, 0) / endTimes.length;
-}
-
-/**
- * Get unique days used in schedule
- */
-function getUniqueDays(schedule: SelectedCourse[]): string[] {
-  const days = new Set<string>();
-  
-  for (const selected of schedule) {
-    for (const slot of selected.selectedSection.timeSlots) {
-      days.add(slot.day);
-    }
-  }
-
-  return Array.from(days);
-}
 
 /**
  * Group time slots by day
@@ -1104,23 +1125,6 @@ function timeToMinutes(time: string): number {
   return hours * 60 + minutes;
 }
 
-/**
- * Calculate metadata for a schedule
- */
-function calculateMetadata(
-  schedule: SelectedCourse[],
-  preference: string | null
-): GeneratedSchedule['metadata'] {
-  return {
-    totalGapMinutes: calculateTotalGapMinutes(schedule),
-    daysUsed: getUniqueDays(schedule).length,
-    avgStartTime: calculateAverageStartTime(schedule),
-    avgEndTime: calculateAverageEndTime(schedule),
-    freeDays: 5 - getUniqueDays(schedule).length,
-    longBreakCount: countLongBreaks(schedule),
-  };
-}
-
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -1131,5 +1135,6 @@ export { scoreSchedule };
  * Score a single schedule (used by tests)
  */
 function scoreSchedule(schedule: GeneratedSchedule, preference: string): number {
-  return calculateScore(schedule.sections, preference);
+  const metrics = calculateScheduleMetrics(schedule.sections);
+  return calculatePreferenceScore(metrics, preference);
 }
