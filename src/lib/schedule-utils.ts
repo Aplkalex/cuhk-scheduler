@@ -1,5 +1,243 @@
 import { TimeSlot, SelectedCourse, Conflict, DayOfWeek } from '@/types';
 
+type CourseColorShades = {
+  DEFAULT: string;
+  100: string;
+  200: string;
+  300: string;
+  400: string;
+  500: string;
+  600: string;
+  700: string;
+  800: string;
+  900: string;
+};
+
+const PRIMARY_COURSE_COLOR_SETS: Record<string, CourseColorShades> = {
+  imperial_red: {
+    DEFAULT: '#f94144',
+    100: '#3d0203',
+    200: '#7b0406',
+    300: '#b80609',
+    400: '#f5080c',
+    500: '#f94144',
+    600: '#fa696b',
+    700: '#fc8e90',
+    800: '#fdb4b5',
+    900: '#fed9da',
+  },
+  orange_crayola: {
+    DEFAULT: '#f3722c',
+    100: '#361503',
+    200: '#6c2a06',
+    300: '#a23f09',
+    400: '#d8540d',
+    500: '#f3722c',
+    600: '#f58d55',
+    700: '#f8aa80',
+    800: '#fac6aa',
+    900: '#fde3d5',
+  },
+  coral: {
+    DEFAULT: '#f9844a',
+    100: '#3e1602',
+    200: '#7d2c04',
+    300: '#bb4206',
+    400: '#f7590a',
+    500: '#f9844a',
+    600: '#fa9c6d',
+    700: '#fcb591',
+    800: '#fdcdb6',
+    900: '#fee6da',
+  },
+  saffron: {
+    DEFAULT: '#f9c74f',
+    100: '#3f2d02',
+    200: '#7e5a05',
+    300: '#bd8607',
+    400: '#f6b10f',
+    500: '#f9c74f',
+    600: '#fad171',
+    700: '#fbdc95',
+    800: '#fce8b8',
+    900: '#fef3dc',
+  },
+  pistachio: {
+    DEFAULT: '#90be6d',
+    100: '#1d2a13',
+    200: '#395325',
+    300: '#567d38',
+    400: '#72a64b',
+    500: '#90be6d',
+    600: '#a7cb8c',
+    700: '#bdd8a8',
+    800: '#d3e5c5',
+    900: '#e9f2e2',
+  },
+  zomp: {
+    DEFAULT: '#43aa8b',
+    100: '#0d221b',
+    200: '#1b4337',
+    300: '#286552',
+    400: '#35866e',
+    500: '#43aa8b',
+    600: '#61c0a4',
+    700: '#89d0bb',
+    800: '#b0e0d1',
+    900: '#d8efe8',
+  },
+  dark_cyan: {
+    DEFAULT: '#4d908e',
+    100: '#0f1d1c',
+    200: '#1f3938',
+    300: '#2e5654',
+    400: '#3d7270',
+    500: '#4d908e',
+    600: '#68aeab',
+    700: '#8ec2c0',
+    800: '#b3d6d5',
+    900: '#d9ebea',
+  },
+  paynes_gray: {
+    DEFAULT: '#577590',
+    100: '#11171d',
+    200: '#222f39',
+    300: '#344656',
+    400: '#455d73',
+    500: '#577590',
+    600: '#7391ab',
+    700: '#96acc0',
+    800: '#b9c8d5',
+    900: '#dce3ea',
+  },
+  cerulean: {
+    DEFAULT: '#277da1',
+    100: '#081920',
+    200: '#103140',
+    300: '#174a60',
+    400: '#1f6380',
+    500: '#277da1',
+    600: '#37a1ce',
+    700: '#69b8db',
+    800: '#9bd0e7',
+    900: '#cde7f3',
+  },
+};
+
+const SECONDARY_COURSE_COLOR_SETS: Record<string, CourseColorShades> = {
+  rose: {
+    DEFAULT: '#f72585',
+    100: '#37021a',
+    200: '#6e0434',
+    300: '#a5064e',
+    400: '#dc0868',
+    500: '#f72585',
+    600: '#f9529d',
+    700: '#fa7db5',
+    800: '#fca8ce',
+    900: '#fdd4e6',
+  },
+  fandango: {
+    DEFAULT: '#b5179e',
+    100: '#24051f',
+    200: '#48093f',
+    300: '#6c0e5e',
+    400: '#90137e',
+    500: '#b5179e',
+    600: '#e326c7',
+    700: '#ea5dd5',
+    800: '#f193e3',
+    900: '#f8c9f1',
+  },
+  grape: {
+    DEFAULT: '#7209b7',
+    100: '#170225',
+    200: '#2e034a',
+    300: '#45056f',
+    400: '#5c0794',
+    500: '#7209b7',
+    600: '#980df4',
+    700: '#b14af6',
+    800: '#cb86f9',
+    900: '#e5c3fc',
+  },
+  chrysler_blue: {
+    DEFAULT: '#560bad',
+    100: '#110223',
+    200: '#230445',
+    300: '#340768',
+    400: '#45098a',
+    500: '#560bad',
+    600: '#750fea',
+    700: '#9747f3',
+    800: '#ba84f7',
+    900: '#dcc2fb',
+  },
+  zaffre: {
+    DEFAULT: '#3a0ca3',
+    100: '#0b0220',
+    200: '#170541',
+    300: '#220761',
+    400: '#2e0a81',
+    500: '#3a0ca3',
+    600: '#4f11e0',
+    700: '#7743f1',
+    800: '#a582f6',
+    900: '#d2c0fa',
+  },
+  palatinate_blue: {
+    DEFAULT: '#3f37c9',
+    100: '#0c0b28',
+    200: '#191650',
+    300: '#252178',
+    400: '#322ca0',
+    500: '#3f37c9',
+    600: '#655fd3',
+    700: '#8b87de',
+    800: '#b2afe9',
+    900: '#d8d7f4',
+  },
+  neon_blue: {
+    DEFAULT: '#4361ee',
+    100: '#050f38',
+    200: '#0a1d70',
+    300: '#102ca8',
+    400: '#153ae0',
+    500: '#4361ee',
+    600: '#6a83f1',
+    700: '#8fa2f5',
+    800: '#b4c1f8',
+    900: '#dae0fc',
+  },
+  chefchaouen_blue: {
+    DEFAULT: '#4895ef',
+    100: '#051d39',
+    200: '#0a3b72',
+    300: '#0f58ac',
+    400: '#1475e5',
+    500: '#4895ef',
+    600: '#6dabf2',
+    700: '#91c0f5',
+    800: '#b6d5f9',
+    900: '#daeafc',
+  },
+  vivid_sky_blue: {
+    DEFAULT: '#4cc9f0',
+    100: '#052e3a',
+    200: '#095c75',
+    300: '#0e8aaf',
+    400: '#13b8ea',
+    500: '#4cc9f0',
+    600: '#70d5f3',
+    700: '#93dff6',
+    800: '#b7eaf9',
+    900: '#dbf4fc',
+  },
+};
+
+const PRIMARY_COURSE_COLORS = Object.values(PRIMARY_COURSE_COLOR_SETS).map((shades) => shades.DEFAULT);
+const SECONDARY_COURSE_COLORS = Object.values(SECONDARY_COURSE_COLOR_SETS).map((shades) => shades.DEFAULT);
+
 /**
  * Convert time string (HH:MM) to minutes since midnight
  */
@@ -51,6 +289,10 @@ export function detectConflicts(courses: SelectedCourse[]): Conflict[] {
     for (let j = i + 1; j < courses.length; j++) {
       const course1 = courses[i];
       const course2 = courses[j];
+
+      if (course1.course.courseCode === course2.course.courseCode) {
+        continue;
+      }
 
       const conflictingSlots: { slot1: TimeSlot; slot2: TimeSlot }[] = [];
 
@@ -121,27 +363,12 @@ export function formatTime(time: string): string {
  * Uses courseCode hash to ensure consistent unique colors
  */
 export function generateCourseColor(courseCode: string, usedColors: string[]): string {
-  const colors = [
-    '#8B5CF6', // Purple
-    '#3B82F6', // Blue
-    '#10B981', // Green
-    '#F59E0B', // Amber
-    '#EF4444', // Red
-    '#EC4899', // Pink
-    '#6366F1', // Indigo
-    '#14B8A6', // Teal
-    '#F97316', // Orange
-    '#06B6D4', // Cyan
-    '#84CC16', // Lime
-    '#A855F7', // Violet
-    '#D946EF', // Fuchsia
-    '#0EA5E9', // Sky
-    '#22C55E', // Emerald
-    '#FB923C', // Light Orange
-  ];
-
-  // Find first color not in usedColors
-  for (const color of colors) {
+  for (const color of PRIMARY_COURSE_COLORS) {
+    if (!usedColors.includes(color)) {
+      return color;
+    }
+  }
+  for (const color of SECONDARY_COURSE_COLORS) {
     if (!usedColors.includes(color)) {
       return color;
     }
@@ -152,7 +379,8 @@ export function generateCourseColor(courseCode: string, usedColors: string[]): s
   for (let i = 0; i < courseCode.length; i++) {
     hash = courseCode.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return colors[Math.abs(hash) % colors.length];
+  const fallbackPalette = PRIMARY_COURSE_COLORS.concat(SECONDARY_COURSE_COLORS);
+  return fallbackPalette[Math.abs(hash) % fallbackPalette.length];
 }
 
 /**

@@ -27,6 +27,7 @@ interface TimetableGridProps {
   enableDragDrop?: boolean; // Enable drag & drop functionality
   availableCourses?: Course[]; // All available courses for showing alternatives
   onSwapWarning?: (message: string, type: 'full' | 'conflict') => void; // Callback for swap warnings
+  appearance?: 'frosted' | 'modern';
 }
 
 const DEFAULT_COURSE_COLOR = '#8B5CF6';
@@ -58,6 +59,30 @@ const hexToRgb = (hexColor: string) => {
   };
 };
 
+const INSTRUCTOR_TITLE_PREFIXES = ['Dr.', 'Prof.', 'Professor', 'Mr.', 'Ms.', 'Mrs.', 'Miss'];
+
+const formatInstructorDisplayName = (name: string): string => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return name;
+  }
+
+  const prefixIndex = parts.findIndex((part) => INSTRUCTOR_TITLE_PREFIXES.includes(part));
+  const prefix = prefixIndex === -1 ? undefined : parts[prefixIndex];
+  const surnameCandidateIndex = prefixIndex !== -1 && prefixIndex + 1 < parts.length ? prefixIndex + 1 : 0;
+  const surname = parts[surnameCandidateIndex]?.replace(/[^A-Za-z'\-]/g, '') ?? parts[parts.length - 1];
+
+  if (prefix) {
+    return `${prefix} ${surname.toUpperCase()}`;
+  }
+
+  if (parts.length >= 2) {
+    return `${parts[0]} ${parts[1]}`;
+  }
+
+  return parts[0];
+};
+
 const buildGlassPalette = (hexColor?: string) => {
   const base = hexColor ?? DEFAULT_COURSE_COLOR;
   const rgb = hexToRgb(base);
@@ -70,8 +95,8 @@ const buildGlassPalette = (hexColor?: string) => {
       border: 'rgba(139, 92, 246, 0.5)',
       borderSoft: 'rgba(139, 92, 246, 0.32)',
       glow: 'rgba(139, 92, 246, 0.42)',
-      text: 'rgba(36, 40, 52, 0.92)',
-      textShadow: '0 1px 3px rgba(255, 255, 255, 0.4)',
+  text: 'rgba(255, 255, 255, 0.97)',
+  textShadow: '0 1px 2px rgba(15, 23, 42, 0.25)',
       luminance: 0.3,
     };
   }
@@ -81,16 +106,14 @@ const buildGlassPalette = (hexColor?: string) => {
   const prefersDarkText = luminance > 0.55;
 
   // Enhanced opacity for better visibility and frosted glass effect
-  const surfaceSubtle = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.25 : 0.35})`;
-  const surface = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.4 : 0.5})`;
-  const surfaceActive = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.5 : 0.65})`;
-  const border = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.6 : 0.75})`;
-  const borderSoft = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.4 : 0.55})`;
-  const glow = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.45 : 0.6})`;
-  const text = prefersDarkText ? 'rgba(20, 25, 35, 0.95)' : 'rgba(255, 255, 255, 0.98)';
-  const textShadow = prefersDarkText
-    ? '0 1px 3px rgba(255, 255, 255, 0.65)'
-    : '0 2px 8px rgba(0, 0, 0, 0.65)';
+  const surfaceSubtle = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.35 : 0.32})`;
+  const surface = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.55 : 0.48})`;
+  const surfaceActive = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.7 : 0.62})`;
+  const border = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.85 : 0.78})`;
+  const borderSoft = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.58 : 0.5})`;
+  const glow = `rgba(${r}, ${g}, ${b}, ${prefersDarkText ? 0.6 : 0.54})`;
+  const text = 'rgba(255, 255, 255, 0.97)';
+  const textShadow = '0 1px 2px rgba(15, 23, 42, 0.25)';
 
   return {
     surfaceSubtle,
@@ -116,6 +139,7 @@ export function TimetableGrid({
   enableDragDrop = false,
   availableCourses = [],
   onSwapWarning,
+  appearance = 'modern',
 }: TimetableGridProps) {
   const [draggedCourse, setDraggedCourse] = useState<SelectedCourse | null>(null);
   const [, startTransition] = useTransition();
@@ -126,6 +150,44 @@ export function TimetableGrid({
   
   // Use only weekdays for now (Mon-Fri)
   const displayDays = WEEKDAYS.slice(0, 5) as DayOfWeek[];
+
+  const isFrosted = appearance === 'frosted';
+  const containerClassName = cn(
+    'relative w-full rounded-2xl border transition-all duration-300',
+    isFrosted
+      ? 'border-gray-200/40 bg-white/55 shadow-[0_36px_90px_-42px_rgba(99,102,241,0.35)] backdrop-blur-[36px] dark:border-white/12 dark:bg-white/[0.07] dark:shadow-[0_40px_90px_-40px_rgba(0,0,0,0.85)]'
+      : 'border-gray-200/20 bg-white/[0.03] shadow-[0_32px_72px_-50px_rgba(15,23,42,0.55)] backdrop-blur-none dark:border-white/[0.07] dark:bg-transparent dark:shadow-[0_40px_80px_-52px_rgba(0,0,0,0.85)]'
+  );
+
+  const dayHeaderClassName = cn(
+    'flex h-full items-center justify-center rounded-2xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] transition-all duration-300',
+    isFrosted
+      ? 'border border-white/60 bg-white/75 shadow-[0_22px_42px_-28px_rgba(59,130,246,0.35)] backdrop-blur-[28px] text-slate-600/90 dark:border-white/18 dark:bg-white/[0.08] dark:text-slate-100'
+      : 'border border-transparent bg-transparent text-slate-500/90 dark:text-slate-100/85'
+  );
+
+  const dayColumnClassName = cn(
+    'relative rounded-xl border overflow-hidden transition-all duration-200',
+    isFrosted
+      ? 'backdrop-blur-sm border-gray-200/50 bg-gray-50/30 hover:border-gray-300/60 hover:bg-gray-50/40 dark:border-gray-700/40 dark:bg-white/[0.05] dark:hover:border-white/20 dark:hover:bg-white/[0.07]'
+      : 'border-white/[0.05] bg-transparent hover:border-white/[0.12] dark:border-white/[0.05] dark:bg-transparent dark:hover:border-white/[0.18]'
+  );
+
+  const gridLineClassName = isFrosted
+    ? 'border-gray-200/60 dark:border-gray-600/40'
+    : 'border-gray-200/35 dark:border-white/[0.08]';
+
+  const courseBlockBaseClass = cn(
+    'absolute left-1 right-1 rounded-lg cursor-pointer group flex flex-col px-2 py-1.5 overflow-visible border transition-all duration-200 ease-out',
+    isFrosted
+      ? 'backdrop-blur-xl shadow-sm hover:shadow-md'
+      : 'backdrop-blur-none shadow-[0_20px_36px_-28px_rgba(15,23,42,0.62)] hover:shadow-[0_24px_40px_-28px_rgba(15,23,42,0.72)]'
+  );
+
+  const ghostBlockBaseClass = cn(
+    'absolute left-1 right-1 rounded-xl border pointer-events-auto cursor-pointer flex flex-col items-center justify-center px-1.5 py-1.5 transition-[transform,box-shadow,opacity] duration-200 ease-out',
+    isFrosted ? 'backdrop-blur-2xl' : 'backdrop-blur-none'
+  );
 
   // Calculate position and height for a course block
   const getCourseStyle = (startTime: string, endTime: string, color?: string): CourseStyle => {
@@ -148,13 +210,15 @@ export function TimetableGrid({
     const style: CourseStyle = {
       top: `${adjustedTop}px`,
       height: `${finalHeight}px`,
-      backgroundColor: palette.surface,
+      backgroundColor: isFrosted ? palette.surface : palette.surfaceActive,
       borderColor: palette.border,
-      boxShadow: `0 26px 40px -30px ${palette.glow}, inset 0 1px 0 rgba(255, 255, 255, 0.48), inset 0 -1px 0 rgba(15, 23, 42, 0.12)`,
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
+      boxShadow: isFrosted
+        ? `0 32px 56px -36px ${palette.glow}, inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(15, 23, 42, 0.12)`
+        : `0 26px 48px -36px ${palette.glow}`,
+      backdropFilter: isFrosted ? 'blur(22px)' : 'none',
+      WebkitBackdropFilter: isFrosted ? 'blur(22px)' : 'none',
       color: palette.text,
-      textShadow: palette.textShadow,
+      textShadow: isFrosted ? palette.textShadow : 'none',
     };
 
     style['--course-glow'] = palette.glow;
@@ -311,9 +375,8 @@ export function TimetableGrid({
       <div
         ref={setNodeRef}
         className={cn(
-          'absolute left-1 right-1 rounded-xl border border-dashed pointer-events-auto cursor-pointer',
-          'flex flex-col items-center justify-center px-1.5 py-1.5 backdrop-blur-2xl',
-          'transition-[transform,box-shadow,opacity] duration-200 ease-out',
+          ghostBlockBaseClass,
+          'border-dashed',
           isOver && 'scale-[1.05] shadow-2xl ring-4 ring-yellow-400/50',
           !isOver && 'hover:scale-[1.02] hover:shadow-lg',
         )}
@@ -324,7 +387,7 @@ export function TimetableGrid({
         </div>
         {section.instructor && (
           <div className="text-[9px] text-center truncate max-w-full opacity-90">
-            {section.instructor.name.split(' ').slice(-2).join(' ')}
+            {formatInstructorDisplayName(section.instructor.name)}
           </div>
         )}
         {isOver && (
@@ -448,10 +511,7 @@ export function TimetableGrid({
         {...attributes}
         {...(isDraggable ? listeners : {})}
         className={cn(
-          'absolute left-1 right-1 rounded-lg cursor-pointer group',
-          'flex flex-col px-2 py-1.5 overflow-visible border backdrop-blur-xl',
-          'shadow-sm hover:shadow-md',
-          'transition-all duration-200 ease-out',
+          courseBlockBaseClass,
           'hover:scale-[1.02]',
           isFull && 'border-red-500/90 dark:border-red-400/90 ring-1 ring-red-500/30',
           hasConflict && 'border-yellow-500/90 dark:border-yellow-400/90 ring-1 ring-yellow-500/30',
@@ -581,7 +641,7 @@ export function TimetableGrid({
 
   const content = (
     <div
-      className="relative w-full rounded-2xl border border-gray-200/60 bg-white/80 shadow-lg backdrop-blur-xl dark:border-gray-700/50 dark:bg-slate-900/80 dark:shadow-2xl"
+      className={containerClassName}
       style={pixelGlassStyle}
     >
       <div className="overflow-x-auto">
@@ -593,7 +653,7 @@ export function TimetableGrid({
             {displayDays.map((day) => (
               <div
                 key={day}
-                className="flex h-full items-center justify-center rounded-2xl border border-white/65 bg-white/75 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-600/90 shadow-[0_22px_42px_-30px_rgba(59,130,246,0.4)] backdrop-blur-2xl dark:border-white/18 dark:bg-slate-900/55 dark:text-slate-200"
+                className={dayHeaderClassName}
                 style={pixelGlassStyle}
               >
                 {day}
@@ -617,7 +677,7 @@ export function TimetableGrid({
             {displayDays.map((day) => (
               <div
                 key={day}
-                className="relative rounded-xl border overflow-hidden transition-all duration-200 backdrop-blur-sm border-gray-200/50 bg-gray-50/30 hover:border-gray-300/60 hover:bg-gray-50/40 dark:border-gray-700/40 dark:bg-slate-800/20 dark:hover:border-gray-600/50 dark:hover:bg-slate-800/30"
+                className={dayColumnClassName}
                 style={{
                   ...pixelGlassStyle,
                   height: `${slotHeight * hours.length}px`,
@@ -627,7 +687,7 @@ export function TimetableGrid({
                 {hours.slice(1).map((hour, idx) => (
                   <div
                     key={hour}
-                    className="absolute w-full border-t border-gray-200/60 dark:border-gray-600/40"
+                    className={cn('absolute w-full border-t', gridLineClassName)}
                     style={{ top: `${(idx + 1) * slotHeight}px` }}
                   />
                 ))}
@@ -726,16 +786,18 @@ export function TimetableGrid({
               const palette = buildGlassPalette(draggedCourse.color);
               return (
                 <div
-                  className="p-3 rounded-xl border shadow-2xl backdrop-blur-2xl"
+                  className={cn('p-3 rounded-xl border shadow-2xl', isFrosted ? 'backdrop-blur-2xl' : 'backdrop-blur-none')}
                   style={{
-                    backgroundColor: palette.surfaceActive,
+                    backgroundColor: isFrosted ? palette.surfaceActive : palette.surface,
                     borderColor: palette.border,
                     color: palette.text,
-                    textShadow: palette.textShadow,
+                    textShadow: isFrosted ? palette.textShadow : 'none',
                     transform: 'scale(1.05)',
-                    boxShadow: `0 32px 48px -30px ${palette.glow}, inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(15, 23, 42, 0.15)`,
-                    backdropFilter: 'blur(24px)',
-                    WebkitBackdropFilter: 'blur(24px)',
+                    boxShadow: isFrosted
+                      ? `0 32px 48px -30px ${palette.glow}, inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(15, 23, 42, 0.15)`
+                      : `0 28px 48px -34px ${palette.glow}`,
+                    backdropFilter: isFrosted ? 'blur(24px)' : 'none',
+                    WebkitBackdropFilter: isFrosted ? 'blur(24px)' : 'none',
                   }}
                 >
                   <div className="flex items-center gap-2 mb-1">

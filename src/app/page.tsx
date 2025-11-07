@@ -99,6 +99,17 @@ export default function Home() {
     minGapMinutes: 0,
     maxGapMinutes: 120,
   });
+
+  const [timetableAppearance, setTimetableAppearance] = useState<'modern' | 'frosted'>('modern');
+
+  const emptyTimetableClassName = timetableAppearance === 'frosted'
+    ? 'bg-white/70 dark:bg-white/[0.06] backdrop-blur-xl border border-gray-200/30 dark:border-white/[0.12]'
+    : 'bg-white/[0.08] dark:bg-transparent border border-gray-200/15 dark:border-white/[0.1] backdrop-blur-none';
+
+  const hasCourseSelectionForGeneration =
+    scheduleMode === 'auto-generate'
+      ? selectedCourseCodes.length > 0
+      : selectedCourses.length > 0;
   
   // Simple preference - only one can be selected at a time
   const [selectedPreference, setSelectedPreference] = useState<PreferenceId | null>(null);
@@ -993,9 +1004,17 @@ export default function Home() {
                                     <div key={slotIdx} className="text-[10px] text-gray-600 dark:text-gray-400">
                                       {slot.day} {slot.startTime} - {slot.endTime}
                                       {slot.location && (
-                                        <span className="text-purple-600 dark:text-purple-400 ml-1">
-                                          📍 {slot.location}
-                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleLocationClick(slot.location!)}
+                                          className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 ml-1 transition-colors"
+                                          title={`Open ${slot.location} on map`}
+                                        >
+                                          <span aria-hidden>📍</span>
+                                          <span className="underline decoration-dotted underline-offset-2">
+                                            {slot.location}
+                                          </span>
+                                        </button>
                                       )}
                                     </div>
                                   ))}
@@ -1211,7 +1230,8 @@ export default function Home() {
                   {/* Compact Generate Button */}
                   <button
                     onClick={handleGenerateSchedules}
-                    disabled={(scheduleMode === 'auto-generate' ? selectedCourseCodes.length === 0 : selectedCourses.length === 0) || isGenerating}
+                    disabled={!hasCourseSelectionForGeneration || isGenerating}
+                    aria-disabled={!hasCourseSelectionForGeneration || isGenerating}
                     className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed text-xs flex-shrink-0"
                   >
                     {isGenerating ? (
@@ -1297,6 +1317,36 @@ export default function Home() {
               </div>
             )}
 
+            <div className="flex items-center justify-end gap-2 px-1">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
+                Style
+              </span>
+              <div className="inline-flex overflow-hidden rounded-xl border border-gray-200/60 dark:border-gray-700/40 text-[10px] font-semibold uppercase tracking-[0.16em]">
+                <button
+                  type="button"
+                  onClick={() => setTimetableAppearance('modern')}
+                  className={`px-2.5 py-1 transition-colors ${
+                    timetableAppearance === 'modern'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100/60 dark:hover:bg-white/10'
+                  }`}
+                >
+                  Modern
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimetableAppearance('frosted')}
+                  className={`px-2.5 py-1 transition-colors border-l border-gray-200/60 dark:border-gray-700/40 ${
+                    timetableAppearance === 'frosted'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100/60 dark:hover:bg-white/10'
+                  }`}
+                >
+                  Frosted
+                </button>
+              </div>
+            </div>
+
             {/* Timetable - Scrollable area */}
             <div className="flex-1 overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-purple-400 dark:scrollbar-thumb-purple-600 scrollbar-track-transparent min-h-0">
               {selectedCourses.length > 0 ? (
@@ -1311,9 +1361,10 @@ export default function Home() {
                   onSwapTutorials={handleSwapTutorialSection}
                   availableCourses={availableCourses}
                   onSwapWarning={handleSwapWarning}
+                  appearance={timetableAppearance}
                 />
               ) : (
-                <div className="bg-white/70 dark:bg-[#1e1e1e]/70 backdrop-blur-xl rounded-xl shadow-lg p-8 lg:p-12 text-center border border-gray-200/30 dark:border-gray-700/30">
+                <div className={`${emptyTimetableClassName} rounded-xl shadow-lg p-8 lg:p-12 text-center transition-colors`}>
                   <Calendar className="w-12 h-12 lg:w-16 lg:h-16 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                   <h3 className="text-base lg:text-lg font-semibold text-gray-900 dark:text-white mb-2">
                     Your schedule is empty
