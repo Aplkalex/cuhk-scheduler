@@ -47,9 +47,9 @@ export function ThemeToggle() {
       aria-label={toggleLabel}
     >
       {isDark ? (
-        <Moon className={`${ICON_CLASSES} text-blue-200`} aria-hidden />
-      ) : (
         <Sun className={`${ICON_CLASSES} text-yellow-500`} aria-hidden />
+      ) : (
+        <Moon className={`${ICON_CLASSES} text-blue-200`} aria-hidden />
       )}
     </button>
   );
