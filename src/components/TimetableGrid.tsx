@@ -611,6 +611,12 @@ export function TimetableGrid({
         {/* Delete button */}
         {onRemoveCourse && (
           <button
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+            }}
             onClick={(e) => {
               e.stopPropagation();
               onRemoveCourse(selectedCourse);
