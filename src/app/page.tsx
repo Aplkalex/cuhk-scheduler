@@ -18,10 +18,21 @@ import { DISCLAIMER } from '@/lib/constants';
 import { Calendar, Book, AlertCircle, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, /* Coffee, Check, */ FlaskConical } from 'lucide-react';
 import ConflictToast from '@/components/ConflictToast';
 
-type UndoEntry = {
+type SnapshotUndoEntry = {
+  previousCourses: SelectedCourse[];
+  removed: SelectedCourse;
+  removedIndex: number;
+};
+
+type LegacyUndoEntry = {
   course: SelectedCourse;
   index: number;
 };
+
+type UndoEntry = SnapshotUndoEntry | LegacyUndoEntry;
+
+const isSnapshotUndoEntry = (entry: UndoEntry): entry is SnapshotUndoEntry =>
+  'previousCourses' in entry;
 
 const PREFERENCE_OPTIONS = [
   { id: 'shortBreaks', icon: '⚡', label: 'Short Breaks' },
@@ -209,13 +220,20 @@ export default function Home() {
 
       const [latest, ...rest] = prev;
 
-      setSelectedCourses(current => {
-        const next = [...current];
-        const insertIndex = Math.min(latest.index, next.length);
-        next.splice(insertIndex, 0, latest.course);
-        updateConflicts(next);
-        return next;
-      });
+      if (isSnapshotUndoEntry(latest)) {
+        const restoredCourses = latest.previousCourses.map(course => ({ ...course }));
+        setSelectedCourses(restoredCourses);
+        updateConflicts(restoredCourses);
+      } else {
+        // Fallback for legacy entries captured before the snapshot update
+        setSelectedCourses(current => {
+          const next = [...current];
+          const insertIndex = Math.min(latest.index, next.length);
+          next.splice(insertIndex, 0, latest.course);
+          updateConflicts(next);
+          return next;
+        });
+      }
 
       handleDismissUndo();
       return rest;
@@ -405,8 +423,9 @@ export default function Home() {
         return prev;
       }
 
+      const snapshot = prev.map(course => ({ ...course }));
       const next = prev.filter((_, i) => i !== index);
-      pushUndoEntry({ course: courseToRemove, index });
+      pushUndoEntry({ previousCourses: snapshot, removed: { ...courseToRemove }, removedIndex: index });
       updateConflicts(next);
       return next;
     });
@@ -509,8 +528,8 @@ export default function Home() {
 
       const removedCourse = prev[index];
       const next = prev.filter((_, i) => i !== index);
-
-      pushUndoEntry({ course: removedCourse, index });
+      const snapshot = prev.map(selected => ({ ...selected }));
+      pushUndoEntry({ previousCourses: snapshot, removed: { ...removedCourse }, removedIndex: index });
       updateConflicts(next);
       return next;
     });
@@ -1542,7 +1561,8 @@ export default function Home() {
 
       {/* Undo Toast */}
       {pendingUndo && (() => {
-        const section = pendingUndo.course.selectedSection;
+        const removedEntry = isSnapshotUndoEntry(pendingUndo) ? pendingUndo.removed : pendingUndo.course;
+        const section = removedEntry.selectedSection;
         const firstSlot = section.timeSlots[0];
         const timeRange = firstSlot ? `${firstSlot.day}, ${firstSlot.startTime} - ${firstSlot.endTime}` : null;
         return (
@@ -1550,7 +1570,7 @@ export default function Home() {
             <div className="relative bg-white/90 dark:bg-[#1f1f24]/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 rounded-2xl shadow-[0_28px_60px_-28px_rgba(88,28,135,0.45)] p-4 flex gap-3 items-start">
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Removed {pendingUndo.course.course.courseCode}
+                  Removed {removedEntry.course.courseCode}
                 </p>
                 <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                   {section.sectionType} {section.sectionId}{timeRange ? ` • ${timeRange}` : ''}
@@ -1594,6 +1614,7 @@ export default function Home() {
           location={selectedLocation}
           isOpen={true}
           onClose={() => setSelectedLocation(null)}
+          appearance={timetableAppearance}
         />
       )}
 

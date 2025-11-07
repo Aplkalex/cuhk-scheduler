@@ -16,6 +16,7 @@ export function getBuildingName(code: string): string {
 export function parseLocation(location: string): {
   building: string;
   room: string;
+  buildingName: string;
   fullName: string;
 } {
   const parts = location.split(' ');
@@ -26,6 +27,7 @@ export function parseLocation(location: string): {
   return {
     building,
     room,
+    buildingName,
     fullName: room ? `${buildingName} ${room}` : buildingName,
   };
 }
