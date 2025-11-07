@@ -15,7 +15,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { generateCourseColor, calculateTotalCredits, detectConflicts, hasAvailableSeats, detectNewCourseConflicts } from '@/lib/schedule-utils';
 import { generateSchedules, type GeneratedSchedule } from '@/lib/schedule-generator';
 import { DISCLAIMER } from '@/lib/constants';
-import { Calendar, Book, AlertCircle, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, Coffee, Check, FlaskConical } from 'lucide-react';
+import { Calendar, Book, AlertCircle, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, /* Coffee, Check, */ FlaskConical } from 'lucide-react';
 import ConflictToast from '@/components/ConflictToast';
 
 type UndoEntry = {
@@ -91,6 +91,7 @@ export default function Home() {
   const [selectedCourseCodes, setSelectedCourseCodes] = useState<string[]>([]);
 
   // Schedule generation preferences (for auto-generate mode)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [preferences, setPreferences] = useState<SchedulePreferences>({
     earliestStartTime: '08:00',
     latestEndTime: '18:00',
@@ -101,6 +102,7 @@ export default function Home() {
   
   // Simple preference - only one can be selected at a time
   const [selectedPreference, setSelectedPreference] = useState<PreferenceId | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [preferredDaysOff, setPreferredDaysOff] = useState<DayOfWeek[]>([]);
   const [excludeFullSections, setExcludeFullSections] = useState(false);
 
@@ -697,6 +699,7 @@ export default function Home() {
   };
 
   // Handle drag and drop - move a course section to a new day
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDragEnd = (courseCode: string, sectionId: string, newDay: DayOfWeek) => {
     setSelectedCourses(prev => {
       return prev.map(course => {

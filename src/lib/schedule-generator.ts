@@ -5,7 +5,7 @@
  * filters out conflicts, and ranks by user preferences.
  */
 
-import { Course, Section, SelectedCourse, TimeSlot, DayOfWeek } from '@/types';
+import { Course, Section, SelectedCourse, TimeSlot, /* DayOfWeek */ } from '@/types';
 import { timeSlotsOverlap, hasAvailableSeats } from './schedule-utils';
 
 // ============================================================================
@@ -229,6 +229,7 @@ function getDayPattern(section: Section): string {
 /**
  * Get all lectures grouped by their day patterns
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function groupLecturesByDayPattern(course: Course, excludeFullSections: boolean): Map<string, Section[]> {
   const lectures = course.sections.filter(s => s.sectionType === 'Lecture');
   const patternMap = new Map<string, Section[]>();
@@ -251,6 +252,7 @@ function groupLecturesByDayPattern(course: Course, excludeFullSections: boolean)
 /**
  * Calculate day overlap between two day patterns
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function calculateDayOverlap(pattern1: string, pattern2: string): number {
   const days1 = new Set(pattern1.match(/(Monday|Tuesday|Wednesday|Thursday|Friday)/g) || []);
   const days2 = new Set(pattern2.match(/(Monday|Tuesday|Wednesday|Thursday|Friday)/g) || []);
@@ -350,7 +352,7 @@ function generateValidCombinationsWithPruning(
     .map(item => item.course);
   
   console.log('📊 Course order for day separation:',
-    sortedCourses.map((c, i) => {
+    sortedCourses.map((c) => {
       const analysis = coursesWithAnalysis.find(ca => ca.course === c)!;
       return `${c.courseCode} (${analysis.hasTueThu && !analysis.hasMonWedFri ? 'TueThu' : 
                 analysis.hasMonWedFri && !analysis.hasTueThu ? 'MonWedFri' : 'Mixed'})`;
@@ -688,6 +690,7 @@ function sectionsConflict(section1: Section, section2: Section): boolean {
  * 
  * NOTE: This function is no longer used - replaced by generateValidCombinationsWithPruning
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateAllCombinations(courses: Course[]): SelectedCourse[][] {
   // For each course, get all possible section combinations (lecture + required sections)
   const sectionCombinationsByCourse = courses.map(course => {
@@ -808,6 +811,7 @@ function cartesianProduct<T>(arrays: T[][]): T[][] {
 /**
  * Checks if a schedule has any time conflicts
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function hasConflicts(schedule: SelectedCourse[]): boolean {
   // Check all pairs of sections
   for (let i = 0; i < schedule.length; i++) {
@@ -833,6 +837,7 @@ function hasConflicts(schedule: SelectedCourse[]): boolean {
 // SCORING FUNCTIONS
 // ============================================================================
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MINUTES_PER_DAY = 1440;
 
 const BASE_WEIGHTS = {

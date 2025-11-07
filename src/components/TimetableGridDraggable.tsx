@@ -314,7 +314,7 @@ export function TimetableGridDraggable(props: TimetableGridDraggableProps) {
   };
 
   const handleDragEndInternal = (event: DragEndEvent) => {
-    const { active, over } = event;
+    const { /* active, */ over } = event;
     
     if (!over || !draggedData) {
       setDraggedData(null);

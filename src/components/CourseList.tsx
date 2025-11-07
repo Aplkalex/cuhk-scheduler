@@ -16,7 +16,7 @@ interface CourseListItemProps {
   onToggleSelection?: (courseCode: string) => void;
 }
 
-function SectionButton({ section, course, isSectionSelected, onAddSection, onRemoveSection }: {
+function SectionButton({ section, /* course, isSectionSelected, onAddSection, onRemoveSection */ }: {
   section: Section;
   course: Course;
   isSectionSelected: boolean;

@@ -6,10 +6,10 @@
  */
 
 import { describe, test, expect } from '@jest/globals';
-import type { Course, Section, SelectedCourse, TimeSlot } from '@/types';
+import type { Course, /* Section, */ SelectedCourse, TimeSlot } from '@/types';
 import {
   generateSchedules,
-  scoreSchedule,
+  /* scoreSchedule, */
   type GeneratedSchedule,
   type ScheduleGenerationOptions,
 } from '../schedule-generator';

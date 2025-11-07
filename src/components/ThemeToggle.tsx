@@ -1,6 +1,6 @@
 'use client';
 
-import { Moon, Sun } from 'lucide-react';
+import { /* Moon, */ Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 const BUTTON_CLASSES =
@@ -12,20 +12,16 @@ export function ThemeToggle() {
   const effectiveTheme = (resolvedTheme ?? theme) as 'light' | 'dark' | 'system' | undefined;
   const currentTheme = effectiveTheme === 'dark' ? 'dark' : 'light';
   const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  const label = `Switch to ${nextTheme} mode`;
-  const icon = currentTheme === 'dark'
-    ? <Sun className={`${ICON_CLASSES} text-yellow-500`} aria-hidden />
-    : <Moon className={`${ICON_CLASSES} text-gray-700`} aria-hidden />;
 
   return (
     <button
       type="button"
       onClick={() => setTheme(nextTheme)}
       className={BUTTON_CLASSES}
-      title={label}
-      aria-label={label}
+      title="Toggle theme"
+      aria-label="Toggle theme"
     >
-      {icon}
+      <Sun className={`${ICON_CLASSES} text-yellow-500`} aria-hidden />
     </button>
   );
 }

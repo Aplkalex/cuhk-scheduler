@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, memo, useTransition } from 'react';
-import type { CSSProperties, MouseEvent } from 'react';
+import type { CSSProperties, /* MouseEvent */ } from 'react';
 import { SelectedCourse, DayOfWeek, Course, Section, TimeSlot } from '@/types';
 import { TIMETABLE_CONFIG, WEEKDAYS } from '@/lib/constants';
 import { timeToMinutes, formatTime, hasAvailableSeats } from '@/lib/schedule-utils';
@@ -105,9 +105,9 @@ const buildGlassPalette = (hexColor?: string) => {
 
 export function TimetableGrid({ 
   selectedCourses, 
-  onCourseClick, 
+  /* onCourseClick, */
   onRemoveCourse, 
-  onLocationClick, 
+  /* onLocationClick, */
   conflictingCourses = [],
   onSwapLectures,
   onSwapTutorials,
@@ -351,7 +351,7 @@ export function TimetableGrid({
     blockId,
     style,
     slot,
-    onLocationClick,
+    // onLocationClick,
   }: DraggableCourseBlockProps) {
     const [isLocalHovered, setIsLocalHovered] = useState(false);
     const uniqueId = `${selectedCourse.course.courseCode}-${selectedCourse.selectedSection.sectionId}-${blockId}`;
@@ -410,14 +410,14 @@ export function TimetableGrid({
   const hasConflict = conflictingCourses.includes(selectedCourse.course.courseCode);
   const locationLabel = slot.location ?? selectedCourse.selectedSection.timeSlots.find((timeSlot) => timeSlot.location)?.location ?? null;
   const locationDisplay = locationLabel ?? 'Location TBA';
-  const canClickLocation = Boolean(locationLabel && onLocationClick);
+  // const canClickLocation = Boolean(locationLabel && onLocationClick);
 
-    const handleLocationClick = (event: MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
-      if (canClickLocation && locationLabel && onLocationClick) {
-        onLocationClick(locationLabel);
-      }
-    };
+    // const handleLocationClick = (event: MouseEvent<HTMLButtonElement>) => {
+    //   event.stopPropagation();
+    //   if (canClickLocation && locationLabel && onLocationClick) {
+    //     onLocationClick(locationLabel);
+    //   }
+    // };
 
     // Check if this is a valid drop target
     const isValidDropTarget = isOver && draggedCourse && draggedCourse !== selectedCourse && (() => {
@@ -526,17 +526,23 @@ export function TimetableGrid({
         )}
 
         {/* Content */}
-        <div className="flex h-full flex-col justify-between gap-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <div className="text-xs font-semibold uppercase tracking-wide drop-shadow-sm leading-tight">
+        <div className="flex h-full flex-col justify-center gap-1">
+          {/* First row: Course code + section + icons */}
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs font-bold uppercase tracking-wide drop-shadow-sm leading-none">
                 {selectedCourse.course.courseCode}
-              </div>
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider opacity-90 leading-none">
+                {selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' : 
+                 selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' : 
+                 selectedCourse.selectedSection.sectionType} {selectedCourse.selectedSection.sectionId}
+              </span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               {isDraggable && (
                 <RefreshCw
-                  className="h-3 w-3 flex-shrink-0 opacity-70 transition-transform group-hover:scale-110 group-hover:opacity-100"
+                  className="h-3 w-3 opacity-70 transition-transform group-hover:scale-110 group-hover:opacity-100"
                   aria-hidden
                   focusable={false}
                 />
@@ -544,37 +550,27 @@ export function TimetableGrid({
               {hasConflict && (
                 <span
                   title="Schedule conflict"
-                  className="flex h-5 w-5 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900 shadow-lg ring-2 ring-white/50 backdrop-blur"
+                  className="flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900 shadow-lg ring-1 ring-white/50 backdrop-blur"
                 >
-                  <AlertCircle className="h-3 w-3" />
+                  <AlertCircle className="h-2.5 w-2.5" />
                 </span>
               )}
               {isFull && (
                 <span
                   title="Section is full"
-                  className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-400/90 text-white shadow-lg ring-2 ring-white/40 backdrop-blur"
+                  className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-400/90 text-white shadow-lg ring-1 ring-white/40 backdrop-blur"
                 >
-                  <AlertCircle className="h-3 w-3" />
+                  <AlertCircle className="h-2.5 w-2.5" />
                 </span>
               )}
             </div>
           </div>
 
-          <div className="flex items-end justify-between text-[9px] font-semibold uppercase tracking-[0.18em] opacity-90">
-            {canClickLocation ? (
-              <button
-                type="button"
-                onClick={handleLocationClick}
-                className="max-w-[120px] truncate text-left underline-offset-2 transition-colors hover:underline"
-                title={`Open location details for ${locationDisplay}`}
-              >
-                {locationDisplay}
-              </button>
-            ) : (
-              <span className="max-w-[120px] truncate" title={locationLabel ?? undefined}>
-                {locationDisplay}
-              </span>
-            )}
+          {/* Second row: Location */}
+          <div className="text-[9px] font-semibold uppercase tracking-wider opacity-85 leading-none">
+            <span className="truncate block" title={locationLabel ?? undefined}>
+              {locationDisplay}
+            </span>
           </div>
         </div>
       </div>
