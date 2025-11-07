@@ -12,7 +12,7 @@ import BuildingModal from '@/components/BuildingModal';
 import { CourseDetailsModal } from '@/components/CourseDetailsModal';
 import { SectionSwapModal } from '@/components/SectionSwapModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { generateCourseColor, calculateTotalCredits, detectConflicts, hasAvailableSeats, detectNewCourseConflicts, countUniqueCourses } from '@/lib/schedule-utils';
+import { generateCourseColor, calculateTotalCredits, detectConflicts, hasAvailableSeats, detectNewCourseConflicts, countUniqueCourses, removeDependentSectionsForLecture, removeLectureAndDependents } from '@/lib/schedule-utils';
 import { generateSchedules, type GeneratedSchedule } from '@/lib/schedule-generator';
 import { DISCLAIMER } from '@/lib/constants';
 import { Calendar, Book, AlertCircle, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, /* Coffee, Check, */ FlaskConical } from 'lucide-react';
@@ -295,26 +295,37 @@ export default function Home() {
         (sc) => sc.course.courseCode === course.courseCode && sc.selectedSection.sectionType === 'Lecture'
       );
 
-      if (existingLectureIndex !== -1) {
-        // Replace the existing lecture with the new one
-        const updatedCourses = [...selectedCourses];
-        updatedCourses[existingLectureIndex] = {
-          course,
-          selectedSection: section,
-          color: updatedCourses[existingLectureIndex].color, // Keep the same color
-        };
+      const prunedCourses = removeDependentSectionsForLecture(
+        selectedCourses,
+        course.courseCode,
+        section.sectionId
+      );
 
-        // Also remove any tutorials associated with the old lecture
-        const oldLectureId = selectedCourses[existingLectureIndex].selectedSection.sectionId;
-        const filteredCourses = updatedCourses.filter(
-          (sc) => !(sc.course.courseCode === course.courseCode && 
-                    sc.selectedSection.sectionType === 'Tutorial' && 
-                    sc.selectedSection.parentLecture === oldLectureId)
-        );
+      const lectureColor = (
+        existingLectureIndex !== -1
+          ? selectedCourses[existingLectureIndex].color
+          : undefined
+      ) ?? existingCourseColor ?? generateCourseColor(course.courseCode, usedColors);
 
-        setSelectedCourses(filteredCourses);
-        return;
-      }
+      const firstCourseIndex = prunedCourses.findIndex(
+        (sc) => sc.course.courseCode === course.courseCode
+      );
+
+      const insertIndex = existingLectureIndex !== -1
+        ? Math.min(existingLectureIndex, prunedCourses.length)
+        : firstCourseIndex === -1
+          ? prunedCourses.length
+          : firstCourseIndex;
+
+      const nextCourses = [...prunedCourses];
+      nextCourses.splice(insertIndex, 0, {
+        course,
+        selectedSection: section,
+        color: lectureColor,
+      });
+
+      setSelectedCourses(nextCourses);
+      return;
     }
 
     // For tutorials, check if the parent lecture is selected
@@ -526,8 +537,12 @@ export default function Home() {
         return prev;
       }
 
-      const removedCourse = prev[index];
-      const next = prev.filter((_, i) => i !== index);
+  const removedCourse = prev[index];
+      let next = prev.filter((_, i) => i !== index);
+
+      if (section.sectionType === 'Lecture') {
+        next = removeLectureAndDependents(next, course.courseCode, section.sectionId);
+      }
       const snapshot = prev.map(selected => ({ ...selected }));
       pushUndoEntry({ previousCourses: snapshot, removed: { ...removedCourse }, removedIndex: index });
       updateConflicts(next);

@@ -1,4 +1,4 @@
-import { TimeSlot, SelectedCourse, Conflict, DayOfWeek } from '@/types';
+import { TimeSlot, SelectedCourse, Conflict, DayOfWeek, Course, Section } from '@/types';
 
 type CourseColorShades = {
   DEFAULT: string;
@@ -474,4 +474,106 @@ export function detectNewCourseConflicts(
 
   console.log('  Total conflicts found:', conflicts);
   return conflicts;
+}
+
+const DEPENDENT_SECTION_TYPES = new Set<Section['sectionType']>(['Tutorial', 'Lab']);
+
+const isDependentSectionType = (type: Section['sectionType']) =>
+  DEPENDENT_SECTION_TYPES.has(type);
+
+/**
+ * Determine which lecture is effectively active for a course based on current selections.
+ * Falls back to the parent lecture of any selected tutorial/lab if the lecture itself
+ * hasn't been explicitly added yet.
+ */
+export function getActiveLectureId(
+  selectedCourses: SelectedCourse[],
+  course: Course
+): string | null {
+  const directLecture = selectedCourses.find(
+    (sc) =>
+      sc.course.courseCode === course.courseCode &&
+      sc.selectedSection.sectionType === 'Lecture'
+  );
+
+  if (directLecture) {
+    return directLecture.selectedSection.sectionId;
+  }
+
+  const dependentSection = selectedCourses.find(
+    (sc) =>
+      sc.course.courseCode === course.courseCode &&
+      isDependentSectionType(sc.selectedSection.sectionType) &&
+      sc.selectedSection.parentLecture
+  );
+
+  if (!dependentSection?.selectedSection.parentLecture) {
+    return null;
+  }
+
+  const parentLectureId = dependentSection.selectedSection.parentLecture;
+  const lectureExists = course.sections.some(
+    (section) =>
+      section.sectionType === 'Lecture' && section.sectionId === parentLectureId
+  );
+
+  return lectureExists ? parentLectureId : null;
+}
+
+/**
+ * Remove sections (lectures/tutorials/labs) that don't belong to the supplied lecture.
+ * Useful when switching lectures to ensure dependent sections stay in sync.
+ */
+export function removeDependentSectionsForLecture(
+  selectedCourses: SelectedCourse[],
+  courseCode: string,
+  lectureId: string
+): SelectedCourse[] {
+  return selectedCourses.filter((sc) => {
+    if (sc.course.courseCode !== courseCode) {
+      return true;
+    }
+
+    const { selectedSection } = sc;
+
+    if (selectedSection.sectionType === 'Lecture') {
+      return selectedSection.sectionId === lectureId;
+    }
+
+    if (isDependentSectionType(selectedSection.sectionType)) {
+      return selectedSection.parentLecture === lectureId;
+    }
+
+    return true;
+  });
+}
+
+/**
+ * Remove a lecture and all of its dependent sections from the current selection.
+ */
+export function removeLectureAndDependents(
+  selectedCourses: SelectedCourse[],
+  courseCode: string,
+  lectureId: string
+): SelectedCourse[] {
+  return selectedCourses.filter((sc) => {
+    if (sc.course.courseCode !== courseCode) {
+      return true;
+    }
+
+    const { selectedSection } = sc;
+
+    if (selectedSection.sectionType === 'Lecture') {
+      return selectedSection.sectionId !== lectureId;
+    }
+
+    if (isDependentSectionType(selectedSection.sectionType)) {
+      if (!selectedSection.parentLecture) {
+        return false;
+      }
+      return selectedSection.parentLecture !== lectureId;
+    }
+
+    return true;
+  });
 }

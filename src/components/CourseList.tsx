@@ -1,7 +1,7 @@
 'use client';
 
 import { Course, Section, SelectedCourse } from '@/types';
-import { hasAvailableSeats } from '@/lib/schedule-utils';
+import { hasAvailableSeats, getActiveLectureId } from '@/lib/schedule-utils';
 import { cn } from '@/lib/utils';
 import { Plus, Trash2, ChevronDown, ChevronRight, Info, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { useState, useMemo } from 'react';
@@ -104,12 +104,9 @@ function CourseListItem({
   };
 
   // Find which lecture is currently selected for this course (if any)
-  const selectedLecture = useMemo(() => {
-    const selectedLec = selectedCourses.find(
-      (sc) => sc.course.courseCode === course.courseCode && sc.selectedSection.sectionType === 'Lecture'
-    );
-    return selectedLec?.selectedSection;
-  }, [selectedCourses, course.courseCode]);
+  const activeLectureId = useMemo(() => {
+    return getActiveLectureId(selectedCourses, course);
+  }, [selectedCourses, course]);
 
   // Group sections by lecture (for courses with LEC+TUT structure)
   const sectionGroups = useMemo(() => {
@@ -242,7 +239,7 @@ function CourseListItem({
             {sectionGroups.map(({ lecture, tutorials, labs }) => {
               const isLectureExpanded = expandedLectures.has(lecture.sectionId);
               const isLectureSelected = isSectionSelected(lecture);
-              const isOtherLectureSelected = selectedLecture && selectedLecture.sectionId !== lecture.sectionId;
+              const isOtherLectureSelected = !!activeLectureId && activeLectureId !== lecture.sectionId;
               const isDisabled = isOtherLectureSelected;
               const isFull = !hasAvailableSeats(lecture);
 
