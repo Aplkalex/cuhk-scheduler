@@ -474,6 +474,51 @@ export function TimetableGrid({
   const locationDisplay = locationLabel ?? 'Location TBA';
   // const canClickLocation = Boolean(locationLabel && onLocationClick);
 
+    const isCompactBlock = durationMinutes <= 60;
+    const showVerticalIconStack = !isCompactBlock;
+
+    const conflictBadge = hasConflict ? (
+      <span
+        title="Schedule conflict"
+        className="flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900 shadow-lg ring-1 ring-white/50 backdrop-blur"
+      >
+        <AlertCircle className="h-2.5 w-2.5" />
+      </span>
+    ) : null;
+
+    const fullBadge = isFull ? (
+      <span
+        title="Section is full"
+        className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-400/90 text-white shadow-lg ring-1 ring-white/40 backdrop-blur"
+      >
+        <AlertCircle className="h-2.5 w-2.5" />
+      </span>
+    ) : null;
+
+    const baseBoxShadow = typeof style.boxShadow === 'string' ? style.boxShadow : undefined;
+    const emphasizedBoxShadow = (() => {
+      if (!baseBoxShadow) return undefined;
+      if (isFull) {
+        return `${baseBoxShadow}, 0 0 0 2px rgba(244, 63, 94, 0.45)`;
+      }
+      if (hasConflict) {
+        return `${baseBoxShadow}, 0 0 0 1.5px rgba(250, 204, 21, 0.4)`;
+      }
+      return baseBoxShadow;
+    })();
+
+    const horizontalIconCount = showVerticalIconStack
+      ? 0
+      : [Boolean(conflictBadge), Boolean(fullBadge), Boolean(isDraggable)].filter(Boolean).length;
+
+    const contentPaddingClass = showVerticalIconStack
+      ? 'pr-7'
+      : horizontalIconCount >= 2
+        ? 'pr-12'
+        : horizontalIconCount === 1
+          ? 'pr-10'
+          : 'pr-6';
+
     // const handleLocationClick = (event: MouseEvent<HTMLButtonElement>) => {
     //   event.stopPropagation();
     //   if (canClickLocation && locationLabel && onLocationClick) {
@@ -513,8 +558,8 @@ export function TimetableGrid({
         className={cn(
           courseBlockBaseClass,
           'hover:scale-[1.02]',
-          isFull && 'border-red-500/90 dark:border-red-400/90 ring-1 ring-red-500/30',
-          hasConflict && 'border-yellow-500/90 dark:border-yellow-400/90 ring-1 ring-yellow-500/30',
+          isFull && 'border-2 border-red-500/90 dark:border-red-400/90 ring-2 ring-red-300/70',
+          hasConflict && !isFull && 'border-2 border-yellow-500/90 dark:border-yellow-400/90 ring-2 ring-yellow-200/70',
           isDragging && 'opacity-0',
           isValidDropTarget && 'ring-2 ring-yellow-400/80 scale-105 shadow-lg animate-pulse',
           isDraggable && 'cursor-grab active:cursor-grabbing',
@@ -527,10 +572,11 @@ export function TimetableGrid({
             : undefined,
           backgroundSize: hasConflict ? 'auto' : undefined,
           borderColor: isFull
-            ? 'rgba(244, 63, 94, 0.88)'
+            ? 'rgba(225, 29, 72, 0.94)'
             : hasConflict
-              ? 'rgba(250, 204, 21, 0.88)'
+              ? 'rgba(234, 179, 8, 0.95)'
               : palette.border,
+          boxShadow: emphasizedBoxShadow,
           // Z-index logic: shorter courses appear on top when conflicting
           // Base z-index: 1 (normal), 10+ (conflicts)
           // For conflicts: z-index = 100 - duration (so 50min class = z50, 180min class = z20)
@@ -584,51 +630,59 @@ export function TimetableGrid({
         )}
 
         {/* Content */}
-        <div className="flex h-full flex-col justify-center gap-1">
-          {/* First row: Course code + section + icons */}
-          <div className="flex items-center justify-between gap-1.5">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-xs font-bold uppercase tracking-wide drop-shadow-sm leading-none">
+        <div className="flex h-full flex-col justify-center">
+          {showVerticalIconStack ? (
+            <>
+              {(conflictBadge || fullBadge) && (
+                <div className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1 pointer-events-none">
+                  {conflictBadge}
+                  {fullBadge}
+                </div>
+              )}
+
+              {isDraggable && (
+                <div className="absolute bottom-1.5 right-1.5 pointer-events-none">
+                  <RefreshCw
+                    className="h-3.5 w-3.5 opacity-70 transition-transform group-hover:scale-110 group-hover:opacity-100"
+                    aria-hidden
+                    focusable={false}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+              {conflictBadge}
+              {fullBadge}
+              {isDraggable && (
+                <RefreshCw
+                  className="h-3.5 w-3.5 opacity-80 transition-transform group-hover:scale-110 group-hover:opacity-100"
+                  aria-hidden
+                  focusable={false}
+                />
+              )}
+            </div>
+          )}
+
+          <div className={cn('flex flex-col gap-0.5', contentPaddingClass)}>
+            {/* First row: Course code + section */}
+            <div className="flex items-baseline gap-1 min-w-0">
+              <span className="text-xs font-bold uppercase tracking-wide drop-shadow-sm leading-none whitespace-nowrap">
                 {selectedCourse.course.courseCode}
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider opacity-90 leading-none">
+              <span className="text-[10px] font-semibold uppercase tracking-wider opacity-90 leading-none whitespace-nowrap truncate">
                 {selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' : 
                  selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' : 
                  selectedCourse.selectedSection.sectionType} {selectedCourse.selectedSection.sectionId}
               </span>
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {isDraggable && (
-                <RefreshCw
-                  className="h-3 w-3 opacity-70 transition-transform group-hover:scale-110 group-hover:opacity-100"
-                  aria-hidden
-                  focusable={false}
-                />
-              )}
-              {hasConflict && (
-                <span
-                  title="Schedule conflict"
-                  className="flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900 shadow-lg ring-1 ring-white/50 backdrop-blur"
-                >
-                  <AlertCircle className="h-2.5 w-2.5" />
-                </span>
-              )}
-              {isFull && (
-                <span
-                  title="Section is full"
-                  className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-400/90 text-white shadow-lg ring-1 ring-white/40 backdrop-blur"
-                >
-                  <AlertCircle className="h-2.5 w-2.5" />
-                </span>
-              )}
-            </div>
-          </div>
 
-          {/* Second row: Location */}
-          <div className="text-[9px] font-semibold uppercase tracking-wider opacity-85 leading-none">
-            <span className="truncate block" title={locationLabel ?? undefined}>
-              {locationDisplay}
-            </span>
+            {/* Second row: Location */}
+            <div className="text-[9px] font-semibold uppercase tracking-wider opacity-85 leading-tight">
+              <span className="truncate block" title={locationLabel ?? undefined}>
+                {locationDisplay}
+              </span>
+            </div>
           </div>
         </div>
       </div>
