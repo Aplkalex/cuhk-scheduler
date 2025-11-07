@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { X, MapPin, ExternalLink, Building2 } from 'lucide-react';
 import { formatLocation, getBuildingCode } from '@/lib/location-utils';
 
@@ -98,7 +97,7 @@ export default function BuildingModal({ isOpen, onClose, location }: BuildingMod
             <div className="flex items-start gap-2 p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 rounded-lg">
               <span className="text-base">💡</span>
               <p className="text-xs text-purple-900 dark:text-purple-200 leading-relaxed">
-                Click <span className="font-semibold">"Open in Maps"</span> to get directions to this building on campus.
+                Click <span className="font-semibold">&ldquo;Open in Maps&rdquo;</span> to get directions to this building on campus.
               </p>
             </div>
           </div>

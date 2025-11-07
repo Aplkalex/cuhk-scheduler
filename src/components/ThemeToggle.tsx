@@ -2,36 +2,30 @@
 
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+
+const BUTTON_CLASSES =
+  'p-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors';
+const ICON_CLASSES = 'w-5 h-5';
 
 export function ThemeToggle() {
-  const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
-
-  // useEffect only runs on the client, so now we can safely show the UI
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <button className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700">
-        <Sun className="w-5 h-5" />
-      </button>
-    );
-  }
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const effectiveTheme = (resolvedTheme ?? theme) as 'light' | 'dark' | 'system' | undefined;
+  const currentTheme = effectiveTheme === 'dark' ? 'dark' : 'light';
+  const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  const label = `Switch to ${nextTheme} mode`;
+  const icon = currentTheme === 'dark'
+    ? <Sun className={`${ICON_CLASSES} text-yellow-500`} aria-hidden />
+    : <Moon className={`${ICON_CLASSES} text-gray-700`} aria-hidden />;
 
   return (
     <button
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      type="button"
+      onClick={() => setTheme(nextTheme)}
+      className={BUTTON_CLASSES}
+      title={label}
+      aria-label={label}
     >
-      {theme === 'dark' ? (
-        <Sun className="w-5 h-5 text-yellow-500" />
-      ) : (
-        <Moon className="w-5 h-5 text-gray-700" />
-      )}
+      {icon}
     </button>
   );
 }

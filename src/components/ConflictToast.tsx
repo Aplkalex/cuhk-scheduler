@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 
 interface ConflictToastProps {
@@ -12,20 +12,21 @@ interface ConflictToastProps {
 export default function ConflictToast({ conflicts, onClose, duration = 5000 }: ConflictToastProps) {
   const [isExiting, setIsExiting] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      handleClose();
-    }, duration);
-
-    return () => clearTimeout(timer);
-  }, [duration, onClose]);
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsExiting(true);
     setTimeout(() => {
       onClose();
     }, 300); // Match animation duration
-  };
+  }, [onClose]);
+
+  useEffect(() => {
+    if (conflicts.length === 0) {
+      return;
+    }
+
+    const timer = setTimeout(handleClose, duration);
+    return () => clearTimeout(timer);
+  }, [conflicts.length, duration, handleClose]);
 
   if (conflicts.length === 0) return null;
 

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
-import { SelectedCourse, DayOfWeek, TimeSlot } from '@/types';
+import { SelectedCourse, DayOfWeek, TimeSlot, Section } from '@/types';
 import { TIMETABLE_CONFIG, WEEKDAYS } from '@/lib/constants';
 import { timeToMinutes, formatTime, hasAvailableSeats } from '@/lib/schedule-utils';
 import { cn } from '@/lib/utils';
@@ -17,17 +18,38 @@ interface TimetableGridDraggableProps {
   onDragEnd: (courseCode: string, sectionId: string, newDay: DayOfWeek) => void;
 }
 
+const DEFAULT_COURSE_COLOR = '#8B5CF6';
+
+type SectionType = Section['sectionType'];
+
+interface DraggedSectionData {
+  courseCode: string;
+  sectionId: string;
+  sectionType: SectionType;
+  timeSlots: TimeSlot[];
+  color?: string;
+}
+
 // Draggable Course Block Component
-function DraggableCourseBlock({ 
-  selectedCourse, 
-  slot, 
-  blockId, 
-  style, 
+interface DraggableCourseBlockProps {
+  selectedCourse: SelectedCourse;
+  blockId: string;
+  style: CSSProperties;
+  onRemove?: (course: SelectedCourse) => void;
+  onClick?: (course: SelectedCourse) => void;
+  conflictingCourses?: string[];
+  isDraggedSection: boolean;
+}
+
+function DraggableCourseBlock({
+  selectedCourse,
+  blockId,
+  style,
   onRemove,
   onClick,
   conflictingCourses = [],
-  isDraggedSection
-}: any) {
+  isDraggedSection,
+}: DraggableCourseBlockProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: blockId,
     data: {
@@ -36,10 +58,9 @@ function DraggableCourseBlock({
       sectionType: selectedCourse.selectedSection.sectionType,
       timeSlots: selectedCourse.selectedSection.timeSlots,
       color: selectedCourse.color,
-    },
+    } satisfies DraggedSectionData,
   });
 
-  const [isHovered, setIsHovered] = useState(false);
   const isFull = !hasAvailableSeats(selectedCourse.selectedSection);
   const hasConflict = conflictingCourses.includes(selectedCourse.course.courseCode);
 
@@ -61,8 +82,6 @@ function DraggableCourseBlock({
         ...style,
         transition: isDragging ? 'none' : 'all 0.3s ease',
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       {...attributes}
       {...listeners}
     >
@@ -116,7 +135,13 @@ function DraggableCourseBlock({
 }
 
 // Drop Shadow Preview Component
-function DropShadowPreview({ timeSlots, color, getCourseStyle }: any) {
+interface DropShadowPreviewProps {
+  timeSlots: TimeSlot[];
+  color: string;
+  getCourseStyle: (startTime: string, endTime: string, color?: string) => CSSProperties;
+}
+
+function DropShadowPreview({ timeSlots, color, getCourseStyle }: DropShadowPreviewProps) {
   return (
     <>
       {timeSlots.map((slot: TimeSlot, idx: number) => {
@@ -139,20 +164,33 @@ function DropShadowPreview({ timeSlots, color, getCourseStyle }: any) {
 }
 
 // Droppable Day Column Component
-function DroppableDayColumn({ 
-  day, 
-  hours, 
+interface DroppableDayColumnProps {
+  day: DayOfWeek;
+  hours: number[];
+  slotHeight: number;
+  selectedCourses: SelectedCourse[];
+  onRemoveCourse?: (course: SelectedCourse) => void;
+  onCourseClick?: (course: SelectedCourse) => void;
+  conflictingCourses?: string[];
+  getCourseStyle: (startTime: string, endTime: string, color?: string) => CSSProperties;
+  draggedData: DraggedSectionData | null;
+  draggedCourseCode?: string;
+  draggedSectionId?: string;
+}
+
+function DroppableDayColumn({
+  day,
+  hours,
   slotHeight,
-  startHour,
-  selectedCourses, 
+  selectedCourses,
   onRemoveCourse,
   onCourseClick,
   conflictingCourses,
   getCourseStyle,
   draggedData,
   draggedCourseCode,
-  draggedSectionId
-}: any) {
+  draggedSectionId,
+}: DroppableDayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `day-${day}`,
     data: {
@@ -161,7 +199,7 @@ function DroppableDayColumn({
   });
 
   // Show drop shadow if dragging and this is a valid drop zone
-  const showDropShadow = isOver && draggedData;
+  const showDropShadow = isOver && draggedData !== null;
   
   // Check if the dragged section has multiple time slots
   const hasMultipleSlots = draggedData?.timeSlots && draggedData.timeSlots.length > 1;
@@ -177,13 +215,13 @@ function DroppableDayColumn({
         'overflow-hidden'
       )}
       style={{ 
-        height: `${slotHeight * hours.length}px`,
-        borderColor: isOver && hasMultipleSlots ? draggedData.color : undefined,
-        backgroundColor: isOver && hasMultipleSlots ? `${draggedData.color}15` : undefined,
+  height: `${slotHeight * hours.length}px`,
+  borderColor: isOver && hasMultipleSlots && draggedData ? draggedData.color : undefined,
+  backgroundColor: isOver && hasMultipleSlots && draggedData ? `${draggedData.color ?? DEFAULT_COURSE_COLOR}15` : undefined,
       }}
     >
       {/* Hour grid lines */}
-      {hours.slice(1).map((hour: number, idx: number) => (
+  {hours.slice(1).map((hour, idx) => (
         <div
           key={hour}
           className="absolute w-full border-t border-gray-100/50 dark:border-gray-800/50"
@@ -192,16 +230,16 @@ function DroppableDayColumn({
       ))}
 
       {/* Drop shadow preview when dragging over */}
-      {showDropShadow && hasMultipleSlots && (
+      {showDropShadow && hasMultipleSlots && draggedData && (
         <DropShadowPreview
           timeSlots={draggedData.timeSlots}
-          color={draggedData.color}
+          color={draggedData.color ?? DEFAULT_COURSE_COLOR}
           getCourseStyle={getCourseStyle}
         />
       )}
 
       {/* Course blocks */}
-      {selectedCourses.map((selectedCourse: SelectedCourse, courseIdx: number) => {
+      {selectedCourses.map((selectedCourse) => {
         const isDraggedSection = 
           draggedCourseCode === selectedCourse.course.courseCode &&
           draggedSectionId === selectedCourse.selectedSection.sectionId;
@@ -216,7 +254,6 @@ function DroppableDayColumn({
               <DraggableCourseBlock
                 key={blockId}
                 selectedCourse={selectedCourse}
-                slot={slot}
                 blockId={blockId}
                 style={style}
                 onRemove={onRemoveCourse}
@@ -231,16 +268,16 @@ function DroppableDayColumn({
   );
 }
 
-export function TimetableGridDraggable({ 
-  selectedCourses, 
-  onCourseClick, 
-  onRemoveCourse, 
-  onLocationClick, 
-  conflictingCourses = [],
-  onDragEnd 
-}: TimetableGridDraggableProps) {
+export function TimetableGridDraggable(props: TimetableGridDraggableProps) {
+  const {
+    selectedCourses,
+    onCourseClick,
+    onRemoveCourse,
+    conflictingCourses = [],
+    onDragEnd,
+  } = props;
   const { startHour, endHour, slotHeight } = TIMETABLE_CONFIG;
-  const [draggedData, setDraggedData] = useState<any>(null);
+  const [draggedData, setDraggedData] = useState<DraggedSectionData | null>(null);
   
   // Generate hours array (8 AM to 9 PM)
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
@@ -249,7 +286,7 @@ export function TimetableGridDraggable({
   const displayDays = WEEKDAYS.slice(0, 5) as DayOfWeek[];
 
   // Calculate position and height for a course block
-  const getCourseStyle = (startTime: string, endTime: string, color?: string) => {
+  const getCourseStyle = (startTime: string, endTime: string, color?: string): CSSProperties => {
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
     const startOfDay = startHour * 60;
@@ -265,12 +302,12 @@ export function TimetableGridDraggable({
     return {
       top: `${adjustedTop}px`,
       height: `${finalHeight}px`,
-      backgroundColor: color || '#8B5CF6',
+      backgroundColor: color ?? DEFAULT_COURSE_COLOR,
     };
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    const data = event.active.data.current;
+    const data = event.active.data.current as DraggedSectionData | undefined;
     if (data) {
       setDraggedData(data);
     }
@@ -284,10 +321,10 @@ export function TimetableGridDraggable({
       return;
     }
 
-    const dropData = over.data.current;
-    
-    if (dropData && dropData.day) {
-      const newDay = dropData.day as DayOfWeek;
+    const dropData = over.data.current as { day?: DayOfWeek } | undefined;
+
+    if (dropData?.day) {
+      const newDay = dropData.day;
       
       // Only proceed if the section has multiple time slots (draggable)
       if (draggedData.timeSlots && draggedData.timeSlots.length > 1) {
@@ -341,7 +378,6 @@ export function TimetableGridDraggable({
                   day={day}
                   hours={hours}
                   slotHeight={slotHeight}
-                  startHour={startHour}
                   selectedCourses={selectedCourses}
                   onRemoveCourse={onRemoveCourse}
                   onCourseClick={onCourseClick}
@@ -363,7 +399,7 @@ export function TimetableGridDraggable({
           <div
             className="rounded-lg text-white flex flex-col px-2 py-1.5 shadow-2xl opacity-90 border-2 border-white"
             style={{
-              backgroundColor: draggedData.color,
+              backgroundColor: draggedData.color ?? DEFAULT_COURSE_COLOR,
               width: '140px',
               minHeight: '60px',
             }}

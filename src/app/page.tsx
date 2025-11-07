@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Course, Section, SelectedCourse, TermType, SchedulePreferences, DayOfWeek } from '@/types';
 import { mockCourses } from '@/data/mock-courses';
 import { testCourses } from '@/data/test-courses';
@@ -18,6 +18,22 @@ import { DISCLAIMER } from '@/lib/constants';
 import { Calendar, Book, AlertCircle, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, Coffee, Check, FlaskConical } from 'lucide-react';
 import ConflictToast from '@/components/ConflictToast';
 
+type UndoEntry = {
+  course: SelectedCourse;
+  index: number;
+};
+
+const PREFERENCE_OPTIONS = [
+  { id: 'shortBreaks', icon: '⚡', label: 'Short Breaks' },
+  { id: 'longBreaks', icon: '☕', label: 'Long Breaks' },
+  { id: 'consistentStart', icon: '🎯', label: 'Consistent' },
+  { id: 'startLate', icon: '🌅', label: 'Start Late' },
+  { id: 'endEarly', icon: '🌆', label: 'End Early' },
+  { id: 'daysOff', icon: '🗓️', label: 'Days Off' },
+] as const;
+
+type PreferenceId = typeof PREFERENCE_OPTIONS[number]['id'];
+
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourses, setSelectedCourses] = useState<SelectedCourse[]>([]);
@@ -31,9 +47,38 @@ export default function Home() {
   const [swapModalCourse, setSwapModalCourse] = useState<SelectedCourse | null>(null);
   const [conflictToast, setConflictToast] = useState<Array<{ course1: string; course2: string }>>([]);
   const [conflictingCourses, setConflictingCourses] = useState<string[]>([]);
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
+  const [pendingUndo, setPendingUndo] = useState<UndoEntry | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedTerm, setSelectedTerm] = useState<TermType>('2025-26-T1');
   const [swapWarning, setSwapWarning] = useState<string | null>(null);
   const [isSwapWarningExiting, setIsSwapWarningExiting] = useState(false);
+  const [swapWarningType, setSwapWarningType] = useState<'full' | 'conflict' | null>(null);
+  const swapWarningStyles = useMemo(() => {
+    if (swapWarningType === 'conflict') {
+      return {
+        container: 'bg-rose-50/95 dark:bg-rose-900/95 backdrop-blur-xl border-2 border-rose-400 dark:border-rose-600',
+        icon: 'bg-rose-500 dark:bg-rose-600',
+        title: 'text-rose-900 dark:text-rose-100',
+        text: 'text-rose-800 dark:text-rose-200',
+        button:
+          'text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-200 hover:bg-rose-200/50 dark:hover:bg-rose-800/30',
+        progressTrack: 'bg-rose-200/50 dark:bg-rose-950/50',
+        progressBar: 'bg-rose-500 dark:bg-rose-400',
+      } as const;
+    }
+
+    return {
+      container: 'bg-amber-50/95 dark:bg-amber-900/95 backdrop-blur-xl border-2 border-amber-400 dark:border-amber-600',
+      icon: 'bg-amber-500 dark:bg-amber-600',
+      title: 'text-amber-900 dark:text-amber-100',
+      text: 'text-amber-800 dark:text-amber-200',
+      button:
+        'text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-200/50 dark:hover:bg-amber-800/30',
+      progressTrack: 'bg-amber-200/50 dark:bg-amber-950/50',
+      progressBar: 'bg-amber-500 dark:bg-amber-400',
+    } as const;
+  }, [swapWarningType]);
   
   // Schedule mode: 'manual' or 'auto-generate'
   const [scheduleMode, setScheduleMode] = useState<'manual' | 'auto-generate'>('auto-generate');
@@ -55,7 +100,7 @@ export default function Home() {
   });
   
   // Simple preference - only one can be selected at a time
-  const [selectedPreference, setSelectedPreference] = useState<'shortBreaks' | 'longBreaks' | 'consistentStart' | 'startLate' | 'endEarly' | 'daysOff' | null>(null);
+  const [selectedPreference, setSelectedPreference] = useState<PreferenceId | null>(null);
   const [preferredDaysOff, setPreferredDaysOff] = useState<DayOfWeek[]>([]);
   const [excludeFullSections, setExcludeFullSections] = useState(false);
 
@@ -110,6 +155,85 @@ export default function Home() {
     mockCourses.filter(c => c.term === selectedTerm), 
     [selectedTerm]
   );
+
+  const updateConflicts = useCallback((courses: SelectedCourse[]) => {
+    const allConflicts = detectConflicts(courses);
+    const conflictingCodes = new Set<string>();
+    allConflicts.forEach(conflict => {
+      conflictingCodes.add(conflict.course1.course.courseCode);
+      conflictingCodes.add(conflict.course2.course.courseCode);
+    });
+    setConflictingCourses(Array.from(conflictingCodes));
+  }, []);
+
+  const handleDismissUndo = useCallback(() => {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+    setPendingUndo(null);
+  }, []);
+
+  const pushUndoEntry = useCallback((entry: UndoEntry) => {
+    setUndoStack(prev => {
+      const next = [entry, ...prev];
+      return next.slice(0, 25);
+    });
+
+    handleDismissUndo();
+
+    setPendingUndo(entry);
+    undoTimerRef.current = setTimeout(() => {
+      handleDismissUndo();
+    }, 6000);
+  }, [handleDismissUndo]);
+
+  const undoLastRemoval = useCallback(() => {
+    setUndoStack(prev => {
+      if (prev.length === 0) {
+        return prev;
+      }
+
+      const [latest, ...rest] = prev;
+
+      setSelectedCourses(current => {
+        const next = [...current];
+        const insertIndex = Math.min(latest.index, next.length);
+        next.splice(insertIndex, 0, latest.course);
+        updateConflicts(next);
+        return next;
+      });
+
+      handleDismissUndo();
+      return rest;
+    });
+  }, [updateConflicts, handleDismissUndo]);
+
+  useEffect(() => {
+    return () => {
+      handleDismissUndo();
+    };
+  }, [handleDismissUndo]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const isUndoShortcut = (event.metaKey || event.ctrlKey) && !event.shiftKey && key === 'z';
+
+      if (isUndoShortcut) {
+        if (undoStack.length === 0) {
+          return;
+        }
+        event.preventDefault();
+        undoLastRemoval();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [undoStack.length, undoLastRemoval]);
 
   // Add a course section to schedule
   const handleAddSection = (course: Course, section: Section) => {
@@ -262,18 +386,18 @@ export default function Home() {
 
   // Remove a course from schedule
   const handleRemoveCourse = useCallback((index: number) => {
-    const updatedCourses = selectedCourses.filter((_, i) => i !== index);
-    setSelectedCourses(updatedCourses);
-    
-    // Recalculate conflicts after removal
-    const allConflicts = detectConflicts(updatedCourses);
-    const conflictingCodes = new Set<string>();
-    allConflicts.forEach(conflict => {
-      conflictingCodes.add(conflict.course1.course.courseCode);
-      conflictingCodes.add(conflict.course2.course.courseCode);
+    setSelectedCourses(prev => {
+      const courseToRemove = prev[index];
+      if (!courseToRemove) {
+        return prev;
+      }
+
+      const next = prev.filter((_, i) => i !== index);
+      pushUndoEntry({ course: courseToRemove, index });
+      updateConflicts(next);
+      return next;
     });
-    setConflictingCourses(Array.from(conflictingCodes));
-  }, [selectedCourses]);
+  }, [pushUndoEntry, updateConflicts]);
 
   // Swap lecture section and automatically assign tutorial
   const handleSwapLectureSection = useCallback((courseCode: string, currentLectureId: string, newLectureId: string) => {
@@ -325,18 +449,10 @@ export default function Home() {
         });
       }
 
-      // Recalculate conflicts after swap
-      const allConflicts = detectConflicts(updated);
-      const conflictingCodes = new Set<string>();
-      allConflicts.forEach(conflict => {
-        conflictingCodes.add(conflict.course1.course.courseCode);
-        conflictingCodes.add(conflict.course2.course.courseCode);
-      });
-      setConflictingCourses(Array.from(conflictingCodes));
-
+      updateConflicts(updated);
       return updated;
     });
-  }, [selectedTerm]);
+  }, [selectedTerm, updateConflicts]);
 
   // Swap tutorial sections (only within same lecture)
   const handleSwapTutorialSection = useCallback((courseCode: string, fromTutorialId: string, toTutorialId: string) => {
@@ -362,35 +478,30 @@ export default function Home() {
         return selectedCourse;
       });
 
-      // Recalculate conflicts after swap
-      const allConflicts = detectConflicts(updated);
-      const conflictingCodes = new Set<string>();
-      allConflicts.forEach(conflict => {
-        conflictingCodes.add(conflict.course1.course.courseCode);
-        conflictingCodes.add(conflict.course2.course.courseCode);
-      });
-      setConflictingCourses(Array.from(conflictingCodes));
-
+      updateConflicts(updated);
       return updated;
     });
-  }, [selectedTerm]);
+  }, [selectedTerm, updateConflicts]);
 
   // Remove section from course list
   const handleRemoveSection = useCallback((course: Course, section: Section) => {
-    const updatedCourses = selectedCourses.filter(
-      (sc) => !(sc.course.courseCode === course.courseCode && sc.selectedSection.sectionId === section.sectionId)
-    );
-    setSelectedCourses(updatedCourses);
-    
-    // Recalculate conflicts after removal
-    const allConflicts = detectConflicts(updatedCourses);
-    const conflictingCodes = new Set<string>();
-    allConflicts.forEach(conflict => {
-      conflictingCodes.add(conflict.course1.course.courseCode);
-      conflictingCodes.add(conflict.course2.course.courseCode);
+    setSelectedCourses(prev => {
+      const index = prev.findIndex(
+        (sc) => sc.course.courseCode === course.courseCode && sc.selectedSection.sectionId === section.sectionId
+      );
+
+      if (index === -1) {
+        return prev;
+      }
+
+      const removedCourse = prev[index];
+      const next = prev.filter((_, i) => i !== index);
+
+      pushUndoEntry({ course: removedCourse, index });
+      updateConflicts(next);
+      return next;
     });
-    setConflictingCourses(Array.from(conflictingCodes));
-  }, [selectedCourses]);
+  }, [pushUndoEntry, updateConflicts]);
 
   // Handle closing warning with animation
   const handleCloseWarning = useCallback(() => {
@@ -404,11 +515,15 @@ export default function Home() {
   // Handle swap warnings
   const handleSwapWarning = useCallback((message: string, type: 'full' | 'conflict') => {
     setSwapWarning(message);
+    setSwapWarningType(type);
     setIsSwapWarningExiting(false);
     // Auto-hide after 5 seconds
     setTimeout(() => {
       setIsSwapWarningExiting(true);
-      setTimeout(() => setSwapWarning(null), 300);
+      setTimeout(() => {
+        setSwapWarning(null);
+        setSwapWarningType(null);
+      }, 300);
     }, 5000);
   }, []);
 
@@ -445,6 +560,9 @@ export default function Home() {
     setGeneratedSchedules([]);
     setSelectedScheduleIndex(0);
     setShowClearConfirm(false);
+    setUndoStack([]);
+    handleDismissUndo();
+    updateConflicts([]);
   };
 
   // Handle term change - clear schedule when switching terms
@@ -1037,17 +1155,10 @@ export default function Home() {
 
                   {/* Compact Preferences - Buttons with hover text */}
                   <div className="flex gap-1 flex-1 justify-center">
-                    {[
-                      { id: 'shortBreaks', icon: '⚡', label: 'Short Breaks' },
-                      { id: 'longBreaks', icon: '☕', label: 'Long Breaks' },
-                      { id: 'consistentStart', icon: '🎯', label: 'Consistent' },
-                      { id: 'startLate', icon: '🌅', label: 'Start Late' },
-                      { id: 'endEarly', icon: '🌆', label: 'End Early' },
-                      { id: 'daysOff', icon: '🗓️', label: 'Days Off' },
-                    ].map(pref => (
+                    {PREFERENCE_OPTIONS.map((pref) => (
                       <button
                         key={pref.id}
-                        onClick={() => setSelectedPreference(selectedPreference === pref.id ? null : pref.id as any)}
+                        onClick={() => setSelectedPreference(selectedPreference === pref.id ? null : pref.id)}
                         className={`group relative px-2 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 ${
                           selectedPreference === pref.id
                             ? 'bg-purple-600 dark:bg-purple-500 text-white shadow-md'
@@ -1332,41 +1443,92 @@ export default function Home() {
       {/* Swap Warning Toast */}
       {swapWarning && (
         <div className={`fixed top-36 right-4 z-50 ${isSwapWarningExiting ? 'animate-slideOutToTop' : 'animate-slideInFromTop'}`}>
-          <div className="bg-amber-50/95 dark:bg-amber-900/95 backdrop-blur-xl border-2 border-amber-400 dark:border-amber-600 rounded-xl shadow-2xl overflow-hidden max-w-md">
+          <div className={`${swapWarningStyles.container} rounded-xl shadow-2xl overflow-hidden max-w-md`}>
             <div className="p-4">
               <div className="flex items-start gap-3">
-                <div className="bg-amber-500 dark:bg-amber-600 text-white p-2 rounded-full flex-shrink-0 shadow-lg">
+                <div className={`${swapWarningStyles.icon} text-white p-2 rounded-full flex-shrink-0 shadow-lg`}>
                   <AlertCircle className="w-5 h-5" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-bold text-amber-900 dark:text-amber-100 mb-1 text-base">
+                  <h4 className={`font-bold ${swapWarningStyles.title} mb-1 text-base`}>
                     Section Swapped with Warning
                   </h4>
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <p className={`text-sm ${swapWarningStyles.text}`}>
                     {swapWarning}
                   </p>
                 </div>
                 <button
                   onClick={() => {
                     setIsSwapWarningExiting(true);
-                    setTimeout(() => setSwapWarning(null), 300);
+                    setTimeout(() => {
+                      setSwapWarning(null);
+                      setSwapWarningType(null);
+                    }, 300);
                   }}
-                  className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-200/50 dark:hover:bg-amber-800/30 rounded p-1 transition-all flex-shrink-0"
+                  className={`${swapWarningStyles.button} rounded p-1 transition-all flex-shrink-0`}
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
             {/* Progress bar */}
-            <div className="h-1 bg-amber-200/50 dark:bg-amber-950/50">
+            <div className={`h-1 ${swapWarningStyles.progressTrack}`}>
               <div 
-                className="h-full bg-amber-500 dark:bg-amber-400 animate-shrink"
+                className={`h-full ${swapWarningStyles.progressBar} animate-shrink`}
                 style={{ animationDuration: '5000ms' }}
               />
             </div>
           </div>
         </div>
       )}
+
+      {/* Undo Toast */}
+      {pendingUndo && (() => {
+        const section = pendingUndo.course.selectedSection;
+        const firstSlot = section.timeSlots[0];
+        const timeRange = firstSlot ? `${firstSlot.day}, ${firstSlot.startTime} - ${firstSlot.endTime}` : null;
+        return (
+          <div className="fixed bottom-6 right-6 z-50 w-full max-w-xs sm:max-w-sm">
+            <div className="relative bg-white/90 dark:bg-[#1f1f24]/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 rounded-2xl shadow-[0_28px_60px_-28px_rgba(88,28,135,0.45)] p-4 flex gap-3 items-start">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Removed {pendingUndo.course.course.courseCode}
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                  {section.sectionType} {section.sectionId}{timeRange ? ` • ${timeRange}` : ''}
+                </p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
+                  Press ⌘Z or Ctrl+Z to undo
+                </p>
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={undoLastRemoval}
+                    className="px-3 py-1.5 rounded-lg bg-purple-600 dark:bg-purple-500 hover:bg-purple-700 dark:hover:bg-purple-400 text-white text-xs font-semibold shadow-lg shadow-purple-500/30 transition-transform hover:scale-[1.03]"
+                  >
+                    Undo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDismissUndo}
+                    className="px-3 py-1.5 rounded-lg border border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismissUndo}
+                className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition p-1"
+                aria-label="Dismiss undo notification"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Building Location Modal - Single instance for entire page */}
       {selectedLocation && (
