@@ -86,7 +86,7 @@ export default function BuildingModal({ isOpen, onClose, location, appearance: _
       {/* Backdrop */}
       <div
         className={cn(
-          'fixed inset-0 z-50 transition-opacity duration-200 ease-out',
+          'fixed inset-0 z-[600] transition-opacity duration-200 ease-out',
           overlayClass,
           visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         )}
@@ -96,7 +96,7 @@ export default function BuildingModal({ isOpen, onClose, location, appearance: _
       {/* Modal */}
       <div
         className={cn(
-          'fixed left-1/2 top-1/2 z-50 w-full max-w-md p-4 transition-opacity duration-200 ease-out',
+          'fixed left-1/2 top-1/2 z-[610] w-full max-w-md p-4 transition-opacity duration-200 ease-out',
           '-translate-x-1/2 -translate-y-1/2',
           visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         )}
