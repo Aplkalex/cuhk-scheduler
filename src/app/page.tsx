@@ -2,8 +2,6 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Course, Section, SelectedCourse, TermType, SchedulePreferences, DayOfWeek } from '@/types';
-import { mockCourses } from '@/data/mock-courses';
-import { testCourses } from '@/data/test-courses';
 import TimetableGrid from '@/components/TimetableGrid';
 import { CourseList } from '@/components/CourseList';
 import { SearchBar, FilterBar, FilterButton } from '@/components/SearchBar';
@@ -52,11 +50,21 @@ const PREFERENCE_OPTIONS = [
 
 type PreferenceId = typeof PREFERENCE_OPTIONS[number]['id'];
 
+const DEFAULT_TERMS: Array<{ id: TermType; name: string }> = [
+  { id: '2025-26-T1', name: '2025-26 Term 1' },
+  { id: '2025-26-T2', name: '2025-26 Term 2' },
+  { id: '2025-26-Summer', name: '2025-26 Summer' },
+];
+
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourses, setSelectedCourses] = useState<SelectedCourse[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
+  const [terms, setTerms] = useState(DEFAULT_TERMS);
+  const [isTermsLoading, setIsTermsLoading] = useState(false);
+  const [termsError, setTermsError] = useState<string | null>(null);
+  const [termsReloadKey, setTermsReloadKey] = useState(0);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [fullSectionWarnings, setFullSectionWarnings] = useState<FullSectionWarningData[]>([]);
   const [showDisclaimer, setShowDisclaimer] = useState(true);
@@ -67,6 +75,11 @@ export default function Home() {
   const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
   const [pendingUndo, setPendingUndo] = useState<UndoEntry | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isCoursesLoading, setIsCoursesLoading] = useState(false);
+  const [courseFetchError, setCourseFetchError] = useState<string | null>(null);
+  const [courseFetchVersion, setCourseFetchVersion] = useState(0);
+  const coursesAbortControllerRef = useRef<AbortController | null>(null);
   const fullSectionWarningIdRef = useRef(0);
   const [selectedTerm, setSelectedTerm] = useState<TermType>('2025-26-T1');
   const [swapWarning, setSwapWarning] = useState<string | null>(null);
@@ -154,39 +167,36 @@ export default function Home() {
   }, [selectedCourses]);
 
   // Term display names
-  const termNames: Record<TermType, string> = {
-    '2025-26-T1': '2025-26 Term 1',
-    '2025-26-T2': '2025-26 Term 2',
-    '2025-26-Summer': '2025-26 Summer'
-  };
+  const termNames = useMemo(() => {
+    return terms.reduce((acc, term) => {
+      acc[term.id] = term.name;
+      return acc;
+    }, {} as Record<TermType, string>);
+  }, [terms]);
 
   // Choose courses based on test mode
-  const activeCourses = isTestMode ? testCourses : mockCourses;
-
   // Filter courses based on search, department, and selected term
-  const filteredCourses = activeCourses.filter((course) => {
-    const matchesSearch = 
-      course.courseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.courseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.sections.some(s => 
-        s.instructor?.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  const filteredCourses = courses.filter((course) => {
+    const normalizedQuery = searchQuery.toLowerCase().trim();
+    const matchesSearch = normalizedQuery.length === 0
+      ? true
+      : course.courseCode.toLowerCase().includes(normalizedQuery) ||
+        course.courseName.toLowerCase().includes(normalizedQuery) ||
+        course.sections.some(s => 
+          s.instructor?.name.toLowerCase().includes(normalizedQuery)
+        );
 
     const matchesDepartment = !selectedDepartment || course.department === selectedDepartment;
-    
     const matchesTerm = course.term === selectedTerm;
 
     return matchesSearch && matchesDepartment && matchesTerm;
   });
 
   // Get unique departments
-  const departments = Array.from(new Set(activeCourses.map(c => c.department)));
+  const departments = Array.from(new Set(courses.map(c => c.department)));
 
-  // Memoize available courses for TimetableGrid to prevent re-renders
-  const availableCourses = useMemo(() => 
-    mockCourses.filter(c => c.term === selectedTerm), 
-    [selectedTerm]
-  );
+  // Available courses for timetable interactions
+  const availableCourses = courses;
 
   const updateConflicts = useCallback((courses: SelectedCourse[]) => {
     const allConflicts = detectConflicts(courses);
@@ -253,6 +263,113 @@ export default function Home() {
       handleDismissUndo();
     };
   }, [handleDismissUndo]);
+
+  const retryFetchTerms = useCallback(() => {
+    setTermsReloadKey(prev => prev + 1);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+    setIsTermsLoading(true);
+    setTermsError(null);
+
+    fetch('/api/terms', { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to load terms');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!isMounted) return;
+        if (!data?.data || !Array.isArray(data.data)) {
+          throw new Error('Malformed term response');
+        }
+        const nextTerms = data.data.map((term: { id: string; name: string }) => ({
+          id: term.id as TermType,
+          name: term.name ?? term.id,
+        }));
+        if (nextTerms.length > 0) {
+          setTerms(nextTerms);
+        }
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        if (!isMounted) return;
+        setTermsError(error.message ?? 'Unable to load terms');
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsTermsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [termsReloadKey]);
+
+  useEffect(() => {
+    if (terms.length === 0) {
+      return;
+    }
+    const hasSelected = terms.some(term => term.id === selectedTerm);
+    if (!hasSelected) {
+      setSelectedTerm(terms[0].id);
+    }
+  }, [terms, selectedTerm]);
+
+  const retryFetchCourses = useCallback(() => {
+    setCourseFetchVersion(prev => prev + 1);
+  }, []);
+
+  useEffect(() => {
+    coursesAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    coursesAbortControllerRef.current = controller;
+
+    setIsCoursesLoading(true);
+    setCourseFetchError(null);
+
+    const params = new URLSearchParams();
+    params.set('term', selectedTerm);
+    if (isTestMode) {
+      params.set('testMode', 'true');
+    }
+    params.set('_v', courseFetchVersion.toString());
+
+    fetch(`/api/courses?${params.toString()}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to load courses');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!data?.data || !Array.isArray(data.data)) {
+          throw new Error('Malformed course response');
+        }
+        setCourses(data.data as Course[]);
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        setCourseFetchError(error.message ?? 'Unable to load courses');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsCoursesLoading(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [selectedTerm, isTestMode, courseFetchVersion]);
 
   const queueFullSectionWarning = useCallback((course: Course, section: Section) => {
     setFullSectionWarnings(prev => [
@@ -477,9 +594,9 @@ export default function Home() {
   }, [pushUndoEntry, updateConflicts]);
 
   // Swap lecture section and automatically assign tutorial
-  const handleSwapLectureSection = useCallback((courseCode: string, currentLectureId: string, newLectureId: string) => {
+  const handleSwapLectureSection = (courseCode: string, currentLectureId: string, newLectureId: string) => {
     // Find the course data
-    const courseData = mockCourses.find(c => c.courseCode === courseCode && c.term === selectedTerm);
+    const courseData = courses.find(c => c.courseCode === courseCode && c.term === selectedTerm);
     if (!courseData) return;
 
     // Find the new lecture section
@@ -529,12 +646,12 @@ export default function Home() {
       updateConflicts(updated);
       return updated;
     });
-  }, [selectedTerm, updateConflicts]);
+  };
 
   // Swap tutorial sections (only within same lecture)
-  const handleSwapTutorialSection = useCallback((courseCode: string, fromTutorialId: string, toTutorialId: string) => {
+  const handleSwapTutorialSection = (courseCode: string, fromTutorialId: string, toTutorialId: string) => {
     // Find the course data
-    const courseData = mockCourses.find(c => c.courseCode === courseCode && c.term === selectedTerm);
+    const courseData = courses.find(c => c.courseCode === courseCode && c.term === selectedTerm);
     if (!courseData) return;
 
     // Find the target tutorial section
@@ -558,7 +675,7 @@ export default function Home() {
       updateConflicts(updated);
       return updated;
     });
-  }, [selectedTerm, updateConflicts]);
+  };
 
   // Remove section from course list
   const handleRemoveSection = useCallback((course: Course, section: Section) => {
@@ -735,7 +852,7 @@ export default function Home() {
     // In auto-generate mode, use selectedCourseCodes
     // In manual mode, use selectedCourses
     const coursesToGenerate = scheduleMode === 'auto-generate'
-      ? activeCourses.filter(c => selectedCourseCodes.includes(c.courseCode) && c.term === selectedTerm)
+      ? courses.filter(c => selectedCourseCodes.includes(c.courseCode) && c.term === selectedTerm)
       : Array.from(
           new Map(selectedCourses.map(sc => [sc.course.courseCode, sc.course])).values()
         );
@@ -924,6 +1041,27 @@ export default function Home() {
               </button>
             </div>
           )}
+
+          {termsError && (
+            <div className="bg-red-50/75 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/60 rounded-lg px-3 py-2 flex items-center gap-2 shadow-lg">
+              <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
+              <p className="text-[11px] sm:text-xs text-red-700 dark:text-red-200 flex-1">
+                Unable to refresh term list. {termsError}
+              </p>
+              <button
+                onClick={retryFetchTerms}
+                className="px-2 py-1 text-[11px] font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-400 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {isTermsLoading && !termsError && (
+            <div className="bg-white/70 dark:bg-[#252526]/70 border border-gray-200/50 dark:border-gray-700/50 rounded-lg px-3 py-2 text-[11px] text-gray-600 dark:text-gray-300 shadow-inner">
+              Syncing latest term info…
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 w-full flex-1 min-h-0">
@@ -988,10 +1126,13 @@ export default function Home() {
                         backgroundRepeat: 'no-repeat',
                         backgroundSize: '1em 1em'
                       }}
+                      disabled={isTermsLoading}
                     >
-                      <option value="2025-26-T1">T1</option>
-                      <option value="2025-26-T2">T2</option>
-                      <option value="2025-26-Summer">Summer</option>
+                      {terms.map((term) => (
+                        <option key={term.id} value={term.id}>
+                          {term.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="flex items-center gap-1">
@@ -1212,6 +1353,24 @@ export default function Home() {
 
             {/* Course list - Scrollable - Takes remaining space */}
             <div className="space-y-3">
+              {courseFetchError && (
+                <div className="p-3 rounded-lg border border-red-200/70 dark:border-red-800/60 bg-red-50/70 dark:bg-red-900/20 text-xs text-red-700 dark:text-red-200 flex items-center justify-between gap-3">
+                  <span className="flex-1">Failed to load courses. {courseFetchError}</span>
+                  <button
+                    onClick={retryFetchCourses}
+                    className="px-2 py-1 rounded-md bg-red-600 text-white text-[11px] font-semibold hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-400 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {isCoursesLoading && !courseFetchError && (
+                <div className="p-3 rounded-lg border border-purple-200/60 dark:border-purple-800/50 bg-white/70 dark:bg-[#1e1e1e]/60 text-xs text-purple-700 dark:text-purple-200 shadow-inner">
+                  Loading courses…
+                </div>
+              )}
+
               <CourseList
                 courses={filteredCourses}
                 onAddSection={handleAddSection}
@@ -1585,7 +1744,7 @@ export default function Home() {
               <div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Switch Term?</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {termNames[selectedTerm]} → {termNames[pendingTerm]}
+                  {(termNames[selectedTerm] ?? selectedTerm)} → {(termNames[pendingTerm] ?? pendingTerm)}
                 </p>
               </div>
             </div>
@@ -1594,7 +1753,7 @@ export default function Home() {
               Switching terms will clear your current schedule with <span className="font-semibold text-gray-900 dark:text-white">{uniqueCourseCount} course{uniqueCourseCount !== 1 ? 's' : ''}</span>.
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              You can switch back to {termNames[selectedTerm]} later to create a new schedule.
+              You can switch back to {termNames[selectedTerm] ?? selectedTerm} later to create a new schedule.
             </p>
 
             <div className="flex gap-3">
