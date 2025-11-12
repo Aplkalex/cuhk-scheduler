@@ -17,6 +17,7 @@ import { generateSchedules, type GeneratedSchedule } from '@/lib/schedule-genera
 import { DISCLAIMER } from '@/lib/constants';
 import { Calendar, Book, AlertCircle, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, /* Coffee, Check, */ FlaskConical } from 'lucide-react';
 import ConflictToast from '@/components/ConflictToast';
+import FullSectionWarningToast, { type FullSectionWarningData } from '@/components/FullSectionWarningToast';
 
 type SnapshotUndoEntry = {
   previousCourses: SelectedCourse[];
@@ -51,8 +52,7 @@ export default function Home() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
-  const [fullSectionWarning, setFullSectionWarning] = useState<{ course: Course; section: Section } | null>(null);
-  const [isWarningExiting, setIsWarningExiting] = useState(false);
+  const [fullSectionWarnings, setFullSectionWarnings] = useState<FullSectionWarningData[]>([]);
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const [selectedCourseDetails, setSelectedCourseDetails] = useState<SelectedCourse | null>(null);
   const [swapModalCourse, setSwapModalCourse] = useState<SelectedCourse | null>(null);
@@ -61,6 +61,7 @@ export default function Home() {
   const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
   const [pendingUndo, setPendingUndo] = useState<UndoEntry | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fullSectionWarningIdRef = useRef(0);
   const [selectedTerm, setSelectedTerm] = useState<TermType>('2025-26-T1');
   const [swapWarning, setSwapWarning] = useState<string | null>(null);
   const [isSwapWarningExiting, setIsSwapWarningExiting] = useState(false);
@@ -246,6 +247,21 @@ export default function Home() {
     };
   }, [handleDismissUndo]);
 
+  const queueFullSectionWarning = useCallback((course: Course, section: Section) => {
+    setFullSectionWarnings(prev => [
+      ...prev,
+      {
+        id: fullSectionWarningIdRef.current++,
+        course,
+        section,
+      },
+    ]);
+  }, []);
+
+  const dismissFullSectionWarning = useCallback((id: number) => {
+    setFullSectionWarnings(prev => prev.filter(warning => warning.id !== id));
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
@@ -270,13 +286,7 @@ export default function Home() {
   const handleAddSection = (course: Course, section: Section) => {
     // Show warning if section is full
     if (!hasAvailableSeats(section)) {
-      setFullSectionWarning({ course, section });
-      setIsWarningExiting(false);
-      // Auto-proceed after showing warning
-      setTimeout(() => {
-        setIsWarningExiting(true);
-        setTimeout(() => setFullSectionWarning(null), 300);
-      }, 6000);
+      queueFullSectionWarning(course, section);
     }
 
     // Get existing color for this course if any section is already selected
@@ -435,7 +445,16 @@ export default function Home() {
       }
 
       const snapshot = prev.map(course => ({ ...course }));
-      const next = prev.filter((_, i) => i !== index);
+      let next = prev.filter((_, i) => i !== index);
+
+      if (courseToRemove.selectedSection.sectionType === 'Lecture') {
+        next = removeLectureAndDependents(
+          next,
+          courseToRemove.course.courseCode,
+          courseToRemove.selectedSection.sectionId
+        );
+      }
+
       pushUndoEntry({ previousCourses: snapshot, removed: { ...courseToRemove }, removedIndex: index });
       updateConflicts(next);
       return next;
@@ -550,15 +569,6 @@ export default function Home() {
     });
   }, [pushUndoEntry, updateConflicts]);
 
-  // Handle closing warning with animation
-  const handleCloseWarning = useCallback(() => {
-    setIsWarningExiting(true);
-    setTimeout(() => {
-      setFullSectionWarning(null);
-      setIsWarningExiting(false);
-    }, 300);
-  }, []);
-
   // Handle swap warnings
   const handleSwapWarning = useCallback((message: string, type: 'full' | 'conflict') => {
     setSwapWarning(message);
@@ -608,6 +618,7 @@ export default function Home() {
     setSelectedScheduleIndex(0);
     setShowClearConfirm(false);
     setUndoStack([]);
+    setFullSectionWarnings([]);
     handleDismissUndo();
     updateConflicts([]);
   };
@@ -628,6 +639,7 @@ export default function Home() {
     if (pendingTerm) {
       setSelectedCourses([]);
       setConflictToast([]);
+      setFullSectionWarnings([]);
       setConflictingCourses([]);
       setSelectedTerm(pendingTerm);
       setShowTermChangeConfirm(false);
@@ -1504,42 +1516,17 @@ export default function Home() {
         </div>
       )}
 
-      {/* Full Section Warning Toast */}
-      {fullSectionWarning && (
-        <div className={`fixed top-20 right-4 z-50 ${isWarningExiting ? 'animate-slideOutToTop' : 'animate-slideInFromTop'}`}>
-          <div className="bg-amber-50/95 dark:bg-amber-900/95 backdrop-blur-xl border-2 border-amber-400 dark:border-amber-600 rounded-xl shadow-2xl overflow-hidden max-w-md">
-            <div className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="bg-amber-500 dark:bg-amber-600 text-white p-2 rounded-full flex-shrink-0 shadow-lg">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-amber-900 dark:text-amber-100 mb-1 text-base">
-                    Section Full - Added to Schedule
-                  </h4>
-                  <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
-                    <span className="font-semibold">{fullSectionWarning.course.courseCode}</span> - {fullSectionWarning.section.sectionType} {fullSectionWarning.section.sectionId} has no available seats.
-                  </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                    ⚠️ You may need to join a waitlist or obtain instructor consent to enroll.
-                  </p>
-                </div>
-                <button
-                  onClick={handleCloseWarning}
-                  className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-200/50 dark:hover:bg-amber-800/30 rounded p-1 transition-all flex-shrink-0"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            {/* Progress bar */}
-            <div className="h-1 bg-amber-200/50 dark:bg-amber-950/50">
-              <div 
-                className="h-full bg-amber-500 dark:bg-amber-400 animate-shrink"
-                style={{ animationDuration: '6000ms' }}
-              />
-            </div>
-          </div>
+      {/* Full Section Warning Toasts */}
+      {fullSectionWarnings.length > 0 && (
+        <div className="fixed top-20 right-4 z-50 flex flex-col items-end gap-3">
+          {fullSectionWarnings.map((warning) => (
+            <FullSectionWarningToast
+              key={warning.id}
+              warning={warning}
+              onDismiss={dismissFullSectionWarning}
+              duration={6000}
+            />
+          ))}
         </div>
       )}
 
