@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { Prisma, Course as PrismaCourse } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { mockCourses } from '@/data/mock-courses';
+import { generatedCourses } from '@/data/generated-courses';
 import { testCourses } from '@/data/test-courses';
 import type { Course as SchedulerCourse } from '@/types';
 
@@ -69,7 +70,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (courses.length === 0 && allowFallback) {
-    const fallbackSource = useTestData ? testCourses : mockCourses;
+    const fallbackSource = useTestData
+      ? testCourses
+      : generatedCourses.length > 0
+        ? generatedCourses
+        : mockCourses;
     courses = fallbackSource;
   }
 

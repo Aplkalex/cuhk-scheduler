@@ -53,7 +53,7 @@ export interface Section {
   enrolled: number; // Current enrollment
   seatsRemaining: number;
   waitlist?: number;
-  language?: 'English' | 'Cantonese' | 'Mandarin' | 'Bilingual'; // Teaching language (follows instructor)
+  language?: string; // Teaching language (may include bilingual codes like "C&E")
   addConsent?: boolean; // Whether add consent is required for this section
   dropConsent?: boolean; // Whether drop consent is required for this section
   parentLecture?: string; // For tutorials/labs: which lecture section they belong to (e.g., "A")

@@ -57,33 +57,44 @@ export const mockCourses: Course[] = [
 
 ---
 
-## Option B – Maintain a JSON export and import it into MongoDB
+## Option B – Convert Excel exports to JSON (recommended)
 
-Use this path when you want the production API to read from MongoDB but still control the data manually.
+When you receive an Excel dump from CUSIS, use the helper script to turn it into `Course[]` JSON that the API, importer, and MongoDB seeders understand.
 
-1. Create a JSON file under `data/`, e.g. `data/courses-2025-26-T1.json`. It must be an array of course objects that match the `Course` interface (use ISO strings for `lastUpdated` because JSON cannot store `Date` instances).
-2. Populate every course/section exactly like the TypeScript template above.
-3. Ensure `.env.local` (or `.env`) contains `MONGODB_URI` and, optionally, `ALLOW_FALLBACK_DATA=false` once the database is populated.
-4. Import the JSON:
+1. Drop the Excel file into the repo root (e.g. `CUHK CUSIS Course offering (Nov 12).xlsx`).
+2. Run the converter:
    ```bash
-   npm run import:courses -- data/courses-2025-26-T1.json
+   npm run convert:excel -- --input "CUHK CUSIS Course offering (Nov 12).xlsx" --term 2025-26-T2 --output data/courses-2025-26-T2.json
    ```
-   The script wipes the existing `Term` and `Course` collections, re-creates terms based on the `term` fields in your JSON, and inserts every course.
-5. Start the dev server (`npm run dev`). Because MongoDB now has data, `/api/courses` will serve it automatically. Keep your JSON files under version control so you always know what was last imported.
+   Flags:
+   - `--term` → one of the `TermType` values (update `src/types/index.ts` if you add more).
+   - `--career` → defaults to `Undergraduate`.
+   - `--sheet` → optional sheet name if the workbook has multiple tabs.
+3. The script normalizes section IDs, time slots, instructors, consent flags, etc. Inspect the generated JSON once (it lives under `data/`).
+4. The API automatically loads `data/courses-<term>.json` (configurable via `GENERATED_COURSES_PATH`) as its fallback dataset, so the UI immediately reflects the new catalog.
 
-To reseed the database with the bundled sample data, run:
+## Option C – Import JSON into MongoDB
 
-```bash
-npm run db:seed
-```
+Once you trust the JSON (either created manually or via the converter), load it into your Atlas cluster so `/api/courses` can serve it even without the fallback file.
+
+1. Ensure `.env.local` (or `.env`) contains a valid `MONGODB_URI`. Set `ALLOW_FALLBACK_DATA=false` if you want to rely strictly on Mongo once the import succeeds.
+2. Run:
+   ```bash
+   npm run import:courses -- data/courses-2025-26-T2.json
+   ```
+   The script wipes the old `Term` and `Course` collections, creates terms based on the `term` IDs inside the JSON, and inserts every course.
+3. Start the dev server (`npm run dev`). From now on `/api/courses` will serve Mongo data; if the database is unavailable it falls back to the generated JSON file, then `mockCourses`.
+
+To reseed Mongo with the small mock dataset for local testing, run `npm run db:seed`.
 
 ---
 
 ## Quick checklist for manual updates
 
-- [ ] Added/edited course objects inside `src/data/mock-courses.ts` (or `src/data/test-courses.ts` for QA fixtures).
+- [ ] Added/edited course objects inside `src/data/mock-courses.ts` (or `src/data/test-courses.ts` for QA fixtures) if you still need lightweight dev data.
+- [ ] Converted the latest Excel export via `npm run convert:excel -- --input "<file>" --term <term>` so the JSON fallback stays current.
 - [ ] Updated `TermType` + `defaultTerms` if a brand-new term ID was introduced.
-- [ ] Ran `npm run import:courses -- <json>` after editing JSON (only if using MongoDB).
+- [ ] Ran `npm run import:courses -- <json>` to push data into MongoDB (optional but recommended for production).
 - [ ] Restarted the Next.js dev server if you changed environment variables.
 
 Once these steps are done, the UI, schedule generator, and API routes will all reflect your manually curated dataset. No scraper required. 🎉
