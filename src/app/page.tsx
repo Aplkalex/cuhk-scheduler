@@ -68,10 +68,18 @@ const PREFERENCE_OPTIONS = [
 
 type PreferenceId = typeof PREFERENCE_OPTIONS[number]['id'];
 
+const formatTermLabel = (label: string) => {
+  if (!label) return label;
+  return label.replace(/(\d{4})-(\d{2})/, (_, yearStart: string, yearEnd: string) => {
+    const shortStart = yearStart.slice(-2);
+    return `${shortStart}-${yearEnd}`;
+  });
+};
+
 const DEFAULT_TERMS: Array<{ id: TermType; name: string }> = [
-  { id: '2025-26-T1', name: '2025-26 Term 1' },
-  { id: '2025-26-T2', name: '2025-26 Term 2' },
-  { id: '2025-26-Summer', name: '2025-26 Summer' },
+  { id: '2025-26-T1', name: formatTermLabel('2025-26 Term 1') },
+  { id: '2025-26-T2', name: formatTermLabel('2025-26 Term 2') },
+  { id: '2025-26-Summer', name: formatTermLabel('2025-26 Summer') },
 ];
 
 export default function Home() {
@@ -195,24 +203,23 @@ export default function Home() {
 
   // Choose courses based on test mode
   // Filter courses based on search, department, and selected term
-  const filteredCourses = courses.filter((course) => {
+  const filteredCourses = useMemo(() => {
     const normalizedQuery = searchQuery.toLowerCase().trim();
-    const matchesSearch = normalizedQuery.length === 0
-      ? true
-      : course.courseCode.toLowerCase().includes(normalizedQuery) ||
-        course.courseName.toLowerCase().includes(normalizedQuery) ||
-        course.sections.some(s => 
-          s.instructor?.name.toLowerCase().includes(normalizedQuery)
-        );
+    return courses.filter((course) => {
+      const matchesSearch = normalizedQuery.length === 0
+        ? true
+        : course.courseCode.toLowerCase().includes(normalizedQuery) ||
+          course.courseName.toLowerCase().includes(normalizedQuery) ||
+          course.sections.some((section) => section.instructor?.name.toLowerCase().includes(normalizedQuery));
 
-    const matchesDepartment = !selectedDepartment || course.department === selectedDepartment;
-    const matchesTerm = course.term === selectedTerm;
+      const matchesDepartment = !selectedDepartment || course.department === selectedDepartment;
+      const matchesTerm = course.term === selectedTerm;
 
-    return matchesSearch && matchesDepartment && matchesTerm;
-  });
+      return matchesSearch && matchesDepartment && matchesTerm;
+    });
+  }, [courses, searchQuery, selectedDepartment, selectedTerm]);
 
-  // Get unique departments
-  const departments = Array.from(new Set(courses.map(c => c.department)));
+  const departments = useMemo(() => Array.from(new Set(courses.map((course) => course.department))), [courses]);
 
   // Available courses for timetable interactions
   const availableCourses = courses;
@@ -307,7 +314,7 @@ export default function Home() {
         }
         const nextTerms = data.data.map((term: { id: string; name: string }) => ({
           id: term.id as TermType,
-          name: term.name ?? term.id,
+          name: formatTermLabel(term.name ?? term.id),
         }));
         if (nextTerms.length > 0) {
           setTerms(nextTerms);
