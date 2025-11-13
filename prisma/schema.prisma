@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}
+
+model Term {
+  id        String   @id @map("_id")
+  name      String
+  startDate DateTime?
+  endDate   DateTime?
+  year      String?
+  term      Int?
+}
+
+model Course {
+  id                     String     @id @map("_id") @default(auto()) @db.ObjectId
+  courseCode             String     @unique
+  courseName             String
+  department             String
+  credits                Int
+  description            String?
+  enrollmentRequirements String?
+  prerequisites          String[]   @default([])
+  sections               Section[]
+  term                   String
+  career                 String
+  lastUpdated            DateTime?  @default(now())
+
+  @@index([term])
+  @@index([department])
+}
+
+type Section {
+  sectionId      String
+  sectionType    String
+  instructor     Instructor?
+  timeSlots      TimeSlot[]
+  quota          Int
+  enrolled       Int
+  seatsRemaining Int
+  waitlist       Int?
+  language       String?
+  addConsent     Boolean?
+  dropConsent    Boolean?
+  parentLecture  String?
+  classNumber    Int?
+}
+
+type TimeSlot {
+  day       String
+  startTime String
+  endTime   String
+  location  String?
+}
+
+type Instructor {
+  name       String
+  email      String?
+  department String?
+}
