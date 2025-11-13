@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "db:seed": "ts-node -P tsconfig.seed.json prisma/seed.ts"
+    "db:seed": "ts-node -P tsconfig.seed.json prisma/seed.ts",
+    "import:courses": "ts-node -P tsconfig.seed.json scripts/import-json.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

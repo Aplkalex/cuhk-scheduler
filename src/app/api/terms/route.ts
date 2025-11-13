@@ -8,6 +8,7 @@ const FALLBACK_TERMS = [
 ];
 
 const hasDatabase = Boolean(process.env.MONGODB_URI);
+const allowFallback = process.env.ALLOW_FALLBACK_DATA !== 'false';
 
 export async function GET() {
   if (hasDatabase) {
@@ -22,7 +23,20 @@ export async function GET() {
       }
     } catch (error) {
       console.error('[terms] Failed to load terms from MongoDB:', error);
+      if (!allowFallback) {
+        return NextResponse.json(
+          { success: false, error: 'Unable to load terms from database' },
+          { status: 500 }
+        );
+      }
     }
+  }
+
+  if (!allowFallback) {
+    return NextResponse.json(
+      { success: false, error: 'No term data available' },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({

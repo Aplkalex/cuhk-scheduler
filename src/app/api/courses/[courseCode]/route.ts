@@ -6,6 +6,7 @@ import { testCourses } from '@/data/test-courses';
 import type { Course as SchedulerCourse } from '@/types';
 
 const hasDatabase = Boolean(process.env.MONGODB_URI);
+const allowFallback = process.env.ALLOW_FALLBACK_DATA !== 'false';
 
 const normalizeCourse = (course: PrismaCourse): SchedulerCourse => ({
   _id: course.id,
@@ -47,14 +48,16 @@ export async function GET(
     }
   }
 
-  const fallbackCourse = mockCourses.find((c) => c.courseCode === params.courseCode);
+  if (allowFallback) {
+    const fallbackCourse = mockCourses.find((c) => c.courseCode === params.courseCode);
 
-  if (!fallbackCourse) {
-    return NextResponse.json(
-      { success: false, error: 'Course not found' },
-      { status: 404 }
-    );
+    if (fallbackCourse) {
+      return NextResponse.json({ success: true, data: fallbackCourse });
+    }
   }
 
-  return NextResponse.json({ success: true, data: fallbackCourse });
+  return NextResponse.json(
+    { success: false, error: 'Course not found' },
+    { status: 404 }
+  );
 }

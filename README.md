@@ -121,7 +121,8 @@ src/
 │   ├── time-utils.ts           # Time conversion helpers
 │   └── __tests__/              # Jest unit tests
 └── data/
-    └── mock-courses.json       # Sample CUHK course data
+    ├── mock-courses.ts         # Sample CUHK course data (main manual dataset)
+    └── test-courses.ts         # Smaller fixtures for tests / demo mode
 ```
 
 ## 🛠️ Tech Stack
@@ -169,12 +170,20 @@ Each preference uses a specific scoring function:
 
 ## 📊 Data Source
 
-Currently uses mock course data. Future versions will integrate with:
+Currently uses manually curated mock course data (see [Manual Data Entry](docs/manual-data-entry.md)). Future versions will integrate with:
 - CUHK's course catalog API
 - Real-time enrollment data
 - Course prerequisite information
 
 ⚠️ **Disclaimer**: Always verify course information on CUSIS before enrolling. This tool is for planning purposes only.
+
+## 📝 Manual Data Entry
+
+The former CUSIS scraper has been removed. To update the dataset:
+- Edit `src/data/mock-courses.ts` (or `src/data/test-courses.ts`) directly for local/offline data.
+- Optionally maintain a JSON export and run `npm run import:courses -- <file>` to seed MongoDB when you want the API to read from the database.
+
+For detailed step-by-step instructions, check `docs/manual-data-entry.md`.
 
 ## � Testing
 

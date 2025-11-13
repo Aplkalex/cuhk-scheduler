@@ -148,7 +148,7 @@ export interface CourseFilters {
 }
 
 /**
- * Data sync log (for tracking scraper runs)
+ * Data sync log (for tracking manual imports or other sync jobs)
  */
 export interface SyncLog {
   _id?: string;
