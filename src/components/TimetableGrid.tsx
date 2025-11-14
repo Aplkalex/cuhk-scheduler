@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, memo, useTransition } from 'react';
+import { useState, memo, useTransition, useRef } from 'react';
 import type { CSSProperties, /* MouseEvent */ } from 'react';
 import { SelectedCourse, DayOfWeek, Course, Section, TimeSlot } from '@/types';
 import { TIMETABLE_CONFIG, WEEKDAYS, WEEKDAY_SHORT } from '@/lib/constants';
@@ -12,6 +12,10 @@ import {
   DragOverlay,
   useDraggable,
   useDroppable,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  TouchSensor,
   DragStartEvent,
   DragEndEvent,
 } from '@dnd-kit/core';
@@ -128,6 +132,13 @@ const buildGlassPalette = (hexColor?: string) => {
   };
 };
 
+// Format course code: split letters and digits (e.g., ACCT2111 -> ACCT 2111)
+const formatCourseCode = (code: string): string => {
+  const match = code.match(/^([A-Za-z]+)(\d.*)$/);
+  if (!match) return code;
+  return `${match[1].toUpperCase()} ${match[2]}`;
+};
+
 const OVERLAP_GAP_PX = 8;
 
 type SlotLayoutInput = {
@@ -202,6 +213,16 @@ export function TimetableGrid({
   const [, startTransition] = useTransition();
   const { startHour, endHour, slotHeight } = TIMETABLE_CONFIG;
   const isDragging = Boolean(draggedCourse);
+  const prevBodyStyleRef = useRef<{ overflow?: string; touchAction?: string; overscrollBehavior?: string } | null>(null);
+  // Sensors must be created unconditionally to keep hook order stable
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 8 },
+    })
+  );
   
   // Generate hours array (8 AM to 9 PM)
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
@@ -237,7 +258,7 @@ export function TimetableGrid({
     : 'border-gray-200/35 dark:border-white/[0.08]';
 
   const courseBlockBaseClass = cn(
-    'absolute rounded-lg cursor-pointer group flex flex-col px-2 py-1.5 overflow-visible border transition-transform duration-200 ease-out',
+    'absolute rounded-lg cursor-pointer group flex flex-col px-1.5 sm:px-2 py-1 sm:py-1.5 overflow-visible border transition-transform duration-200 ease-out',
     isFrosted
       ? 'backdrop-blur-xl shadow-sm hover:shadow-md'
       : 'backdrop-blur-none shadow-[0_20px_36px_-28px_rgba(15,23,42,0.62)] hover:shadow-[0_24px_40px_-28px_rgba(15,23,42,0.72)]'
@@ -291,6 +312,18 @@ export function TimetableGrid({
   const handleDragStart = (event: DragStartEvent) => {
     const course = event.active.data.current?.course as SelectedCourse;
     setDraggedCourse(course);
+    // Lock body scroll while dragging so the page doesn't move
+    if (typeof document !== 'undefined') {
+      const body = document.body as HTMLBodyElement;
+      prevBodyStyleRef.current = {
+        overflow: body.style.overflow,
+        touchAction: (body.style as any).touchAction,
+        overscrollBehavior: (body.style as any).overscrollBehavior,
+      };
+      body.style.overflow = 'hidden';
+      (body.style as any).touchAction = 'none';
+      (body.style as any).overscrollBehavior = 'contain';
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -333,6 +366,14 @@ export function TimetableGrid({
 
     // Clear dragged course immediately so next drag can start right away
     setDraggedCourse(null);
+    // Restore body scroll
+    if (typeof document !== 'undefined' && prevBodyStyleRef.current) {
+      const body = document.body as HTMLBodyElement;
+      body.style.overflow = prevBodyStyleRef.current.overflow ?? '';
+      (body.style as any).touchAction = prevBodyStyleRef.current.touchAction ?? '';
+      (body.style as any).overscrollBehavior = prevBodyStyleRef.current.overscrollBehavior ?? '';
+      prevBodyStyleRef.current = null;
+    }
 
     // Proceed with swap in a non-blocking transition
     startTransition(() => {
@@ -380,6 +421,14 @@ export function TimetableGrid({
 
   const handleDragCancel = () => {
     setDraggedCourse(null);
+    // Restore body scroll
+    if (typeof document !== 'undefined' && prevBodyStyleRef.current) {
+      const body = document.body as HTMLBodyElement;
+      body.style.overflow = prevBodyStyleRef.current.overflow ?? '';
+      (body.style as any).touchAction = prevBodyStyleRef.current.touchAction ?? '';
+      (body.style as any).overscrollBehavior = prevBodyStyleRef.current.overscrollBehavior ?? '';
+      prevBodyStyleRef.current = null;
+    }
   };
 
   // Ghost Section Block Component (appears when dragging a lecture or tutorial)
@@ -521,6 +570,8 @@ export function TimetableGrid({
       id: uniqueId,
       data: { course: selectedCourse },
       disabled: !isDraggable,
+      // Short press delay prevents scroll->drag accidents on touch
+      activationConstraint: { delay: 120, tolerance: 6 },
     });
 
     const { setNodeRef: setDropRef, isOver } = useDroppable({
@@ -537,7 +588,8 @@ export function TimetableGrid({
   // const canClickLocation = Boolean(locationLabel && onLocationClick);
 
     const isCompactBlock = durationMinutes <= 60;
-    const showVerticalIconStack = !isCompactBlock;
+    // On compact (short) blocks, stack icons vertically in the corner to free horizontal space for text
+    const showVerticalIconStack = isCompactBlock;
 
     const conflictBadge = hasConflict ? (
       <span
@@ -612,8 +664,10 @@ export function TimetableGrid({
     return (
       <div
         ref={(node) => {
+          setNodeRef(node);
           setDropRef(node);
         }}
+        {...listeners}
         {...attributes}
         className={cn(
           courseBlockBaseClass,
@@ -627,6 +681,8 @@ export function TimetableGrid({
         )}
         style={{
           ...style,
+          // Critical for mobile Safari/Chrome: ensure drags capture move events and don't scroll
+          touchAction: 'none',
           backgroundImage: hasConflict
             ? `repeating-linear-gradient(135deg, rgba(250, 204, 21, 0.28) 0px, rgba(250, 204, 21, 0.08) 12px, transparent 12px, transparent 24px)`
             : undefined,
@@ -663,13 +719,7 @@ export function TimetableGrid({
       >
         {/* Drag handle - only show if draggable */}
         {isDraggable && (
-          <div
-            ref={setNodeRef}
-            {...listeners}
-            {...attributes}
-            className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity touch-none"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
+          <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none">
             <GripVertical className="w-3 h-3 text-white drop-shadow-lg" />
           </div>
         )}
@@ -702,7 +752,7 @@ export function TimetableGrid({
         )}
 
         {/* Content */}
-        <div className="flex h-full flex-col justify-center">
+        <div className="flex h-full flex-col justify-start pt-0.5 pl-2">
           {showVerticalIconStack ? (
             <>
               {(conflictBadge || fullBadge) && (
@@ -736,24 +786,46 @@ export function TimetableGrid({
             </div>
           )}
 
-          <div className={cn('flex flex-col gap-0.5', contentPaddingClass)}>
-            {/* First row: Course code + section */}
-            <div className="flex items-baseline gap-1 min-w-0">
-              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wide drop-shadow-sm leading-none whitespace-nowrap truncate">
-                {selectedCourse.course.courseCode}
+          <div className={cn('flex flex-col gap-0.5 pr-2', contentPaddingClass)}>
+            {/* Mobile: two lines only (fit neatly) */}
+            <div className="sm:hidden flex flex-col leading-tight min-w-0 text-left">
+              <span className="text-[9.5px] font-extrabold whitespace-nowrap overflow-hidden text-ellipsis tracking-[-0.01em]">
+                {formatCourseCode(selectedCourse.course.courseCode)}
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider opacity-90 leading-none whitespace-nowrap truncate">
-                {selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' : 
-                 selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' : 
-                 selectedCourse.selectedSection.sectionType} {selectedCourse.selectedSection.sectionId}
+              <span className="text-[9px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis tracking-[-0.01em]">
+                {(selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' :
+                 selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' :
+                 selectedCourse.selectedSection.sectionType)} {selectedCourse.selectedSection.sectionId}
               </span>
             </div>
 
-            {/* Second row: Location */}
-            <div className="text-[9px] font-semibold uppercase tracking-wider opacity-85 leading-tight">
-              <span className="truncate block" title={locationLabel ?? undefined}>
-                {locationDisplay}
-              </span>
+            {/* Desktop: richer three-line content */}
+            <div className="hidden sm:flex flex-col gap-0.5 min-w-0">
+              {/* First row: course code + section */}
+              <div className="min-w-0">
+                <span className="text-xs font-extrabold leading-tight whitespace-nowrap truncate">
+                  {selectedCourse.course.courseCode}
+                </span>
+                <span className="text-[11px] font-semibold opacity-95 ml-1 leading-tight whitespace-nowrap truncate">
+                  {selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' :
+                  selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' :
+                  selectedCourse.selectedSection.sectionType} {selectedCourse.selectedSection.sectionId}
+                </span>
+              </div>
+              {/* Second row: Course name */}
+              <div className="text-[10px] opacity-90 leading-tight min-w-0">
+                <span className="truncate block" title={selectedCourse.course.courseName}>
+                  {selectedCourse.course.courseName}
+                </span>
+              </div>
+              {/* Third row: Class number + Location */}
+              <div className="text-[10px] opacity-85 leading-tight min-w-0">
+                <span className="truncate block">
+                  {selectedCourse.selectedSection.classNumber ? `#${selectedCourse.selectedSection.classNumber}` : null}
+                  {selectedCourse.selectedSection.classNumber && locationDisplay ? ' • ' : ''}
+                  {locationDisplay}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -768,11 +840,11 @@ export function TimetableGrid({
   const content = (
     <div
       className={cn(containerClassName, isDragging && 'select-none')}
-      // Prevent page scroll while dragging; allow normal touch scrolling otherwise
-      style={{ ...pixelGlassStyle, touchAction: isDragging ? 'none' : 'manipulation' }}
+      // Allow vertical scrolling; DnD has a short delay to distinguish from scroll.
+      style={{ ...pixelGlassStyle, touchAction: isDragging ? 'none' : 'pan-y' }}
     >
       <div className="overflow-x-auto">
-        <div className="min-w-[520px] sm:min-w-[760px] lg:min-w-0 px-3 py-3 sm:px-5 sm:py-5">
+        <div className="min-w-[640px] sm:min-w-[900px] lg:min-w-0 px-3 py-3 sm:px-5 sm:py-5">
           <div className="grid items-center gap-2 sm:gap-2.5 mb-3 sm:mb-4" style={{ gridTemplateColumns }}>
             <div className="flex items-center justify-end pr-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-600/85 dark:text-slate-200/70">
               Time
@@ -911,6 +983,7 @@ export function TimetableGrid({
     return (
       <>
         <DndContext
+          sensors={sensors}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
