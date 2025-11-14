@@ -1,4 +1,4 @@
-# 🎓 CUHK Course Scheduler
+# 🎓 Queuesis | The smarter way to queue courses at CUHK
 
 A CUHK-focused timetable builder that pairs drag-and-drop editing with a deterministic schedule generator. Course data is sourced from official CUSIS exports (converted to JSON via our tooling) and can be synced into MongoDB when needed.
 
