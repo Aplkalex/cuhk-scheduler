@@ -3,7 +3,7 @@
 import { useState, memo, useTransition } from 'react';
 import type { CSSProperties, /* MouseEvent */ } from 'react';
 import { SelectedCourse, DayOfWeek, Course, Section, TimeSlot } from '@/types';
-import { TIMETABLE_CONFIG, WEEKDAYS } from '@/lib/constants';
+import { TIMETABLE_CONFIG, WEEKDAYS, WEEKDAY_SHORT } from '@/lib/constants';
 import { timeToMinutes, formatTime, hasAvailableSeats } from '@/lib/schedule-utils';
 import { cn } from '@/lib/utils';
 import { X, AlertCircle, RefreshCw, GripVertical } from 'lucide-react';
@@ -217,8 +217,9 @@ export function TimetableGrid({
       : 'border-gray-200/20 bg-white/[0.03] shadow-[0_32px_72px_-50px_rgba(15,23,42,0.55)] backdrop-blur-none dark:border-white/[0.07] dark:bg-transparent dark:shadow-[0_40px_80px_-52px_rgba(0,0,0,0.85)]'
   );
 
+  // Day header styles: reduce letter-spacing on small screens and allow truncation
   const dayHeaderClassName = cn(
-    'flex h-full items-center justify-center rounded-2xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] transition-all duration-300',
+    'flex h-full items-center justify-center rounded-2xl px-2 sm:px-3 py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.08em] sm:tracking-[0.22em] transition-all duration-300 truncate',
     isFrosted
       ? 'border border-white/60 bg-white/75 shadow-[0_22px_42px_-28px_rgba(59,130,246,0.35)] backdrop-blur-[28px] text-slate-600/90 dark:border-white/18 dark:bg-white/[0.08] dark:text-slate-100'
       : 'border border-transparent bg-transparent text-slate-500/90 dark:text-slate-100/85'
@@ -611,11 +612,9 @@ export function TimetableGrid({
     return (
       <div
         ref={(node) => {
-          setNodeRef(node);
           setDropRef(node);
         }}
         {...attributes}
-        {...(isDraggable ? listeners : {})}
         className={cn(
           courseBlockBaseClass,
           'hover:scale-[1.02]',
@@ -664,7 +663,13 @@ export function TimetableGrid({
       >
         {/* Drag handle - only show if draggable */}
         {isDraggable && (
-          <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity">
+          <div
+            ref={setNodeRef}
+            {...listeners}
+            {...attributes}
+            className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity touch-none"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
             <GripVertical className="w-3 h-3 text-white drop-shadow-lg" />
           </div>
         )}
@@ -734,7 +739,7 @@ export function TimetableGrid({
           <div className={cn('flex flex-col gap-0.5', contentPaddingClass)}>
             {/* First row: Course code + section */}
             <div className="flex items-baseline gap-1 min-w-0">
-              <span className="text-xs font-bold uppercase tracking-wide drop-shadow-sm leading-none whitespace-nowrap">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wide drop-shadow-sm leading-none whitespace-nowrap truncate">
                 {selectedCourse.course.courseCode}
               </span>
               <span className="text-[10px] font-semibold uppercase tracking-wider opacity-90 leading-none whitespace-nowrap truncate">
@@ -763,10 +768,11 @@ export function TimetableGrid({
   const content = (
     <div
       className={cn(containerClassName, isDragging && 'select-none')}
-      style={{ ...pixelGlassStyle, touchAction: isDragging ? 'none' : undefined }}
+      // Prevent page scroll while dragging; allow normal touch scrolling otherwise
+      style={{ ...pixelGlassStyle, touchAction: isDragging ? 'none' : 'manipulation' }}
     >
       <div className="overflow-x-auto">
-        <div className="min-w-[360px] sm:min-w-[700px] lg:min-w-0 px-3 py-3 sm:px-5 sm:py-5">
+        <div className="min-w-[520px] sm:min-w-[760px] lg:min-w-0 px-3 py-3 sm:px-5 sm:py-5">
           <div className="grid items-center gap-2 sm:gap-2.5 mb-3 sm:mb-4" style={{ gridTemplateColumns }}>
             <div className="flex items-center justify-end pr-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-600/85 dark:text-slate-200/70">
               Time
@@ -777,7 +783,7 @@ export function TimetableGrid({
                 className={dayHeaderClassName}
                 style={pixelGlassStyle}
               >
-                {day}
+                {WEEKDAY_SHORT[day]}
               </div>
             ))}
           </div>

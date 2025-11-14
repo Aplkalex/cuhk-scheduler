@@ -10,7 +10,8 @@ import BuildingModal from '@/components/BuildingModal';
 import { CourseDetailsModal } from '@/components/CourseDetailsModal';
 import { SectionSwapModal } from '@/components/SectionSwapModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { generateCourseColor, calculateTotalCredits, detectConflicts, hasAvailableSeats, detectNewCourseConflicts, countUniqueCourses, removeDependentSectionsForLecture, removeLectureAndDependents } from '@/lib/schedule-utils';
+import { generateCourseColor, calculateTotalCredits, detectConflicts, hasAvailableSeats, detectNewCourseConflicts, countUniqueCourses, removeDependentSectionsForLecture, removeLectureAndDependents, timeToMinutes } from '@/lib/schedule-utils';
+import { TIMETABLE_CONFIG, WEEKDAY_SHORT } from '@/lib/constants';
 import { generateSchedules, type GeneratedSchedule } from '@/lib/schedule-generator';
 import { DISCLAIMER } from '@/lib/constants';
 import { Calendar, Book, AlertCircle, AlertTriangle, Info, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, Download, Upload, Menu, RotateCcw, MapPin, /* Coffee, Check, */ FlaskConical } from 'lucide-react';
@@ -183,6 +184,11 @@ export default function Home() {
     ? 'bg-white/70 dark:bg-white/[0.06] backdrop-blur-xl border border-gray-200/30 dark:border-white/[0.12]'
     : 'bg-white/[0.08] dark:bg-transparent border border-gray-200/15 dark:border-white/[0.1] backdrop-blur-none';
 
+  // Unified "sheet" appearance (quick-actions / preference picker)
+  const sheetClassName = timetableAppearance === 'frosted'
+    ? 'bg-white/60 dark:bg-[#0f0f0f]/55 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-2xl'
+    : 'bg-white/90 dark:bg-[#0f0f0f]/90 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 shadow-2xl';
+
   const hasCourseSelectionForGeneration =
     scheduleMode === 'auto-generate'
       ? selectedCourseCodes.length > 0
@@ -202,6 +208,44 @@ export default function Home() {
   // Test mode state
   const [isTestMode, setIsTestMode] = useState(false);
   const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false);
+  const [isPreferencePickerOpen, setIsPreferencePickerOpen] = useState(false);
+  const [isPrefPending, startPrefTransition] = useTransition();
+  const [mobileView, setMobileView] = useState<'courses' | 'timetable'>('courses');
+  const showMobileGenerateBar =
+    isMobile && scheduleMode === 'auto-generate' && selectedCourseCodes.length > 0;
+  const timetableRef = useRef<HTMLDivElement | null>(null);
+
+  // Build tiny preview data for mobile mini-card
+  const previewData = useMemo(() => {
+    const startOfDay = TIMETABLE_CONFIG.startHour * 60;
+    const endOfDay = TIMETABLE_CONFIG.endHour * 60;
+    const span = endOfDay - startOfDay;
+    const byDay: Record<string, Array<{ topPct: number; heightPct: number; color: string }>> = {
+      Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [],
+    };
+    selectedCourses.forEach((sc) => {
+      sc.selectedSection.timeSlots.forEach((slot) => {
+        if (!(slot.day in byDay)) return;
+        const top = Math.max(0, timeToMinutes(slot.startTime) - startOfDay);
+        const end = Math.min(endOfDay, timeToMinutes(slot.endTime));
+        const height = Math.max(10, end - (timeToMinutes(slot.startTime))); // min height protection
+        byDay[slot.day].push({
+          topPct: Math.min(100, (top / span) * 100),
+          heightPct: Math.min(100, (height / span) * 100),
+          color: sc.color ?? generateCourseColor(sc.course.courseCode, []),
+        });
+      });
+    });
+    return byDay;
+  }, [selectedCourses]);
+
+  const openFullTimetable = useCallback(() => {
+    if (isMobile) {
+      setMobileView('timetable');
+    } else if (timetableRef.current) {
+      timetableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isMobile]);
 
   const handleModeSwitch = useCallback(
     (mode: 'manual' | 'auto-generate') => {
@@ -212,12 +256,14 @@ export default function Home() {
         if (mode === 'auto-generate') {
           const courseCodes = Array.from(new Set(selectedCourses.map((sc) => sc.course.courseCode)));
           setSelectedCourseCodes(courseCodes);
+          if (isMobile) setMobileView('courses');
         } else {
           setSelectedCourseCodes([]);
+          if (isMobile) setMobileView('courses');
         }
       });
     },
-    [selectedCourses, startModeTransition]
+    [selectedCourses, startModeTransition, isMobile]
   );
 
   // Sync selectedCourseCodes with selectedCourses (for manual mode)
@@ -1133,6 +1179,10 @@ export default function Home() {
         setSelectedCourses(schedulesWithColors);
         updateConflicts(schedulesWithColors);
         setConflictToast([]);
+        // Auto-navigate to timetable on mobile so users see the result immediately
+        if (isMobile) {
+          setMobileView('timetable');
+        }
       } else {
         showGenerationNotice({
           title: 'No Valid Schedules Found',
@@ -1318,7 +1368,7 @@ export default function Home() {
 
         <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 w-full flex-1 min-h-0">
           {/* Left sidebar - Fixed width with Course search and My Schedule */}
-          <div className={`w-full lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px] flex flex-col ${isMobile ? '' : 'min-h-0 flex-shrink-0'}`}>
+          <div className={`w-full lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px] flex flex-col ${isMobile ? '' : 'min-h-0 flex-shrink-0'} ${isMobile && mobileView !== 'courses' ? 'hidden' : ''}`}>
             {/* Scrollable sidebar content */}
             <div
               className={`${isMobile ? '' : 'flex-1 overflow-y-auto overflow-x-hidden min-h-0'} space-y-3 pr-1 pb-32 lg:pb-0 scrollbar-thin scrollbar-thumb-purple-400 dark:scrollbar-thumb-purple-600 scrollbar-track-transparent`}
@@ -1574,6 +1624,46 @@ export default function Home() {
               )}
             </div>
 
+            {/* Mini Timetable Preview (mobile) */}
+            {isMobile && selectedCourses.length > 0 && (
+              <div className="bg-white/70 dark:bg-[#252526]/70 backdrop-blur-xl rounded-xl shadow-lg p-3 border border-gray-200/30 dark:border-gray-700/30">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">This Week</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openFullTimetable}
+                    className="px-2.5 py-1 rounded-md bg-purple-600 text-white text-[11px] font-semibold"
+                  >
+                    Open
+                  </button>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5 h-16">
+                  {(['Monday','Tuesday','Wednesday','Thursday','Friday'] as const).map((day) => (
+                    <div key={day} className="relative rounded-md bg-white/40 dark:bg-white/[0.06] border border-gray-200/50 dark:border-white/[0.08] overflow-hidden pt-3">
+                      <div className="absolute inset-x-0 top-0 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 pointer-events-none">
+                        {WEEKDAY_SHORT[day]}
+                      </div>
+                      {previewData[day].map((b, i) => (
+                        <div
+                          key={i}
+                          className="absolute left-0.5 right-0.5 rounded-sm"
+                          style={{
+                            top: `calc(0.9 * ${b.topPct}% )`,
+                            height: `calc(0.9 * ${b.heightPct}%)`,
+                            backgroundColor: b.color,
+                            opacity: 0.85,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Course Search */}
             <div className="bg-white/70 dark:bg-[#252526]/70 backdrop-blur-xl rounded-xl shadow-lg p-4 border border-gray-200/30 dark:border-gray-700/30 flex-shrink-0">
               <div className="flex items-center gap-2 mb-3">
@@ -1652,87 +1742,10 @@ export default function Home() {
           </div>
 
           {/* Right side - Preferences + Timetable */}
-          <div className="flex-1 min-w-0 flex flex-col min-h-0 gap-3">
+          <div className={`flex-1 min-w-0 flex flex-col min-h-0 gap-3 ${isMobile && mobileView !== 'timetable' ? 'hidden' : ''}`}>
             {/* Compact Preferences Bar - Only in Auto-Generate mode when courses selected */}
             {scheduleMode === 'auto-generate' && selectedCourseCodes.length > 0 && (
-              isMobile ? (
-                <div className="bg-white/90 dark:bg-[#252526]/90 backdrop-blur-xl rounded-2xl shadow-lg p-3 border border-gray-200/50 dark:border-gray-700/30 flex-shrink-0 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-md">
-                      <Book className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                      <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
-                        {selectedCourseCodes.length} courses
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleGenerateSchedules}
-                      disabled={!hasCourseSelectionForGeneration || isGenerating}
-                      className="flex items-center gap-1 px-3 py-2 rounded-full bg-purple-600 text-white text-xs font-bold shadow-md disabled:bg-gray-300 disabled:text-gray-600"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Gen...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3 h-3" />
-                          Generate
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="flex gap-1 overflow-x-auto scrollbar-none">
-                    {selectedCourseCodes.map(code => (
-                      <div
-                        key={code}
-                        className="flex items-center gap-1 px-2 py-1 bg-purple-600/80 rounded-full text-white text-xs shadow"
-                      >
-                        {code}
-                        <button onClick={() => handleToggleCourseSelection(code)} className="text-white/80">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                      Preference
-                    </label>
-                    <select
-                      value={selectedPreference ?? ''}
-                      onChange={(e) => setSelectedPreference(e.target.value || null)}
-                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1e1e1e] text-sm px-3 py-2"
-                    >
-                      <option value="">No preference</option>
-                      {PREFERENCE_OPTIONS.map((pref) => (
-                        <option key={pref.id} value={pref.id}>
-                          {pref.icon} {pref.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2">
-                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Skip full sections</span>
-                    <button
-                      onClick={() => setExcludeFullSections(!excludeFullSections)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                        excludeFullSections ? 'bg-purple-600 dark:bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                          excludeFullSections ? 'translate-x-5' : 'translate-x-0.5'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              isMobile ? null : (
               <div className="bg-white/90 dark:bg-[#252526]/90 backdrop-blur-xl rounded-xl shadow-lg p-2.5 border border-gray-200/50 dark:border-gray-700/30 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   {/* Course Count Badge */}
@@ -1939,7 +1952,7 @@ export default function Home() {
             )}
 
             {/* Timetable - Scrollable area */}
-            <div className="flex-1 overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-purple-400 dark:scrollbar-thumb-purple-600 scrollbar-track-transparent min-h-0">
+            <div ref={timetableRef} className={`flex-1 overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-purple-400 dark:scrollbar-thumb-purple-600 scrollbar-track-transparent min-h-0 ${isMobile ? 'pb-44' : ''}`}>
               {selectedCourses.length > 0 ? (
                 <TimetableGrid
                   selectedCourses={selectedCourses}
@@ -1970,6 +1983,177 @@ export default function Home() {
         </div>
       </main>
 
+      {/* Mobile Bottom Controls */}
+      {/* Tabs bar (Courses | Timetable) - always visible on mobile */}
+      {isMobile && (
+        <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
+          <div className={`mx-auto max-w-md ${sheetClassName} rounded-full p-1 flex items-center justify-between`}>
+            <button
+              type="button"
+              onClick={() => setMobileView('courses')}
+              className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold transition ${mobileView === 'courses' ? 'bg-purple-600 text-white shadow' : 'text-gray-700 dark:text-gray-300'}`}
+            >
+              Courses
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileView('timetable')}
+              disabled={selectedCourses.length === 0}
+              className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold transition ${mobileView === 'timetable' ? 'bg-purple-600 text-white shadow' : selectedCourses.length === 0 ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300'}`}
+            >
+              Timetable
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky Generate Bar (Mobile) - courses view only */}
+      {showMobileGenerateBar && isMobile && mobileView === 'courses' && (
+        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0)+52px)] z-40 px-3 pb-3 animate-fadeIn">
+          <div
+            className={`mx-auto max-w-md rounded-2xl ${sheetClassName} shadow-[0_16px_40px_-12px_rgba(88,28,135,0.35)]`}
+            style={{ willChange: 'transform' }}
+          >
+            <div className="flex items-center gap-2 px-3 py-2">
+              <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+                <Book className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
+                  {selectedCourseCodes.length} {selectedCourseCodes.length === 1 ? 'course' : 'courses'}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsPreferencePickerOpen(true)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-[#1e1e1e]/70 text-xs font-semibold text-gray-700 dark:text-gray-200 active:scale-[0.98] transition"
+                title="Break preference"
+              >
+                <span className="text-sm">
+                  {(() => {
+                    switch (selectedPreference) {
+                      case 'shortBreaks': return '⚡';
+                      case 'longBreaks': return '☕';
+                      case 'daysOff': return '🗓️';
+                      case 'startLate': return '🌅';
+                      case 'endEarly': return '🌆';
+                      case 'consistentStart': return '🎯';
+                      default: return '🎛️';
+                    }
+                  })()}
+                </span>
+                <span className="truncate">
+                  {(() => {
+                    switch (selectedPreference) {
+                      case 'shortBreaks': return 'Short breaks';
+                      case 'longBreaks': return 'Long breaks';
+                      case 'daysOff': return 'Days off';
+                      case 'startLate': return 'Start late';
+                      case 'endEarly': return 'End early';
+                      case 'consistentStart': return 'Consistent';
+                      default: return 'Preference';
+                    }
+                  })()}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGenerateSchedules}
+                disabled={!hasCourseSelectionForGeneration || isGenerating}
+                className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed text-xs"
+                aria-disabled={!hasCourseSelectionForGeneration || isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Gen...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3" />
+                    Generate
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Timetable bottom bar (Mobile) - timetable view only */}
+      {isMobile && mobileView === 'timetable' && generatedSchedules.length > 0 && (
+        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0)+8px)] z-40 px-3 pb-2">
+          <div className={`mx-auto max-w-md rounded-2xl ${sheetClassName} shadow-[0_16px_40px_-12px_rgba(88,28,135,0.35)]`}>
+            <div className="flex items-center justify-between gap-2 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setMobileView('courses')}
+                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-[#1e1e1e]/70 text-xs font-semibold text-gray-700 dark:text-gray-200"
+                title="Back to courses"
+              >
+                Courses
+              </button>
+              <div className="flex items-center gap-1">
+                {generatedSchedules.length > 1 && (
+                  <button
+                    onClick={() => {
+                      const newIndex = selectedScheduleIndex > 0 ? selectedScheduleIndex - 1 : generatedSchedules.length - 1;
+                      setSelectedScheduleIndex(newIndex);
+                      const schedulesWithColors = assignColorsToSchedule(generatedSchedules[newIndex].sections);
+                      setSelectedCourses(schedulesWithColors);
+                      updateConflicts(schedulesWithColors);
+                      setConflictToast([]);
+                    }}
+                    className="px-2 py-2 rounded-xl bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-700"
+                    title="Previous schedule"
+                  >
+                    <ChevronDown className="w-4 h-4 rotate-90" />
+                  </button>
+                )}
+                <div className="px-3 py-2 rounded-xl bg-white/60 dark:bg-[#1e1e1e]/60 text-xs font-bold">
+                  {generatedSchedules.length > 1 ? `${selectedScheduleIndex + 1}/${generatedSchedules.length}` : '1/1'}
+                </div>
+                {generatedSchedules.length > 1 && (
+                  <button
+                    onClick={() => {
+                      const newIndex = selectedScheduleIndex < generatedSchedules.length - 1 ? selectedScheduleIndex + 1 : 0;
+                      setSelectedScheduleIndex(newIndex);
+                      const schedulesWithColors = assignColorsToSchedule(generatedSchedules[newIndex].sections);
+                      setSelectedCourses(schedulesWithColors);
+                      updateConflicts(schedulesWithColors);
+                      setConflictToast([]);
+                    }}
+                    className="px-2 py-2 rounded-xl bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-700"
+                    title="Next schedule"
+                  >
+                    <ChevronDown className="w-4 h-4 -rotate-90" />
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateSchedules}
+                disabled={!hasCourseSelectionForGeneration || isGenerating}
+                className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed text-xs"
+                aria-disabled={!hasCourseSelectionForGeneration || isGenerating}
+                title="Regenerate"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Gen...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3" />
+                    Generate
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Building Reference floating button */}
       <div className="hidden lg:block">
         <BuildingReference onBuildingClick={setSelectedLocation} />
@@ -1978,7 +2162,7 @@ export default function Home() {
       {isMobile && (
         <>
           {!isMobileActionsOpen && (
-            <div className="fixed bottom-4 right-4 z-30 lg:hidden flex flex-col gap-3">
+            <div className={`fixed ${isMobile ? (mobileView === 'courses' ? 'bottom-[120px]' : 'bottom-[72px]') : 'bottom-4'} right-4 z-30 lg:hidden flex flex-col gap-3 transition-all`}>
               <button
                 type="button"
                 onClick={undoLastRemoval}
@@ -2009,15 +2193,15 @@ export default function Home() {
           {isMobileActionsOpen && (
             <div className="fixed inset-0 z-40 lg:hidden">
               <div
-                className="absolute inset-0 bg-black/45"
+                className="absolute inset-0 bg-black/45 animate-fadeIn"
                 onClick={() => setIsMobileActionsOpen(false)}
               />
-              <div className="absolute bottom-0 inset-x-0 bg-white dark:bg-[#0f0f0f] rounded-t-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-5 space-y-4 max-h-[85vh] overflow-y-auto">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quick actions</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Switch modes, tweak appearance, or open references.</p>
-                  </div>
+          <div className={`absolute bottom-0 inset-x-0 rounded-t-3xl ${sheetClassName} p-5 space-y-4 max-h-[85vh] overflow-y-auto animate-slideUp transform-gpu`} style={{willChange:'transform'}}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quick actions</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Switch modes, tweak appearance, or open references.</p>
+              </div>
                   <button
                     type="button"
                     onClick={() => setIsMobileActionsOpen(false)}
@@ -2142,7 +2326,7 @@ export default function Home() {
             onClick={dismissGenerationNotice}
           >
             <div
-              className="relative w-full max-w-md bg-white/95 dark:bg-[#131313]/95 rounded-2xl shadow-2xl border border-white/30 dark:border-white/10 overflow-hidden animate-slideIn"
+              className="relative w-full max-w-md bg-white/95 dark:bg-[#131313]/95 rounded-2xl shadow-2xl border border-white/30 dark:border-white/10 overflow-hidden animate-slideUp"
               onClick={(event) => event.stopPropagation()}
             >
               <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${styles.accent}`} />
@@ -2219,10 +2403,91 @@ export default function Home() {
         </div>
       )}
 
+      {/* Preference Picker (mobile bottom sheet with native wheel select)
+         - Uses OS spinner for excellent performance and accessibility on phones */}
+      {isPreferencePickerOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/45 animate-fadeIn"
+            onClick={() => setIsPreferencePickerOpen(false)}
+          />
+          <div className={`absolute bottom-0 inset-x-0 rounded-t-3xl ${sheetClassName} p-5 space-y-4 max-h-[70vh] animate-slideUp transform-gpu`} style={{willChange:'transform'}}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Break Preference</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Choose how we treat gaps between classes</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPreferencePickerOpen(false)}
+                className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Preference grid (replaces plain select) */}
+            <div className="grid grid-cols-2 gap-2">
+              {([{id: null as PreferenceId | null, icon: '🎛️', label: 'No preference'}] as const)
+                .concat(PREFERENCE_OPTIONS as any)
+                .map((opt: any) => {
+                  const active = selectedPreference === opt.id || (opt.id === null && selectedPreference === null);
+                  return (
+                    <button
+                      key={`${opt.id ?? 'none'}`}
+                      type="button"
+                      onClick={() => startPrefTransition(() => setSelectedPreference(opt.id))}
+                      aria-pressed={active}
+                      className={`flex items-center gap-2 px-3 py-3 rounded-xl border transition-all text-sm transform-gpu ${
+                        active
+                          ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-500/25'
+                          : 'bg-white/70 dark:bg-[#1e1e1e]/70 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-white/80 dark:hover:bg-[#252526]'
+                      }`}
+                    >
+                      <span className="text-base">{opt.icon}</span>
+                      <span className="font-semibold">{opt.label}</span>
+                    </button>
+                  );
+                })}
+            </div>
+
+            <div className="flex items-center justify-between mt-2 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Skip full sections</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Ignore sections without seats</p>
+              </div>
+              <button
+                onClick={() => setExcludeFullSections(!excludeFullSections)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  excludeFullSections ? 'bg-purple-600 dark:bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+                role="switch"
+                aria-checked={excludeFullSections}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    excludeFullSections ? 'translate-x-5' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsPreferencePickerOpen(false)}
+              className="w-full py-3 rounded-2xl bg-purple-600 text-white font-semibold shadow-lg shadow-purple-500/25 active:scale-[0.99] transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Term Change Confirmation Modal */}
       {showTermChangeConfirm && pendingTerm && (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white/90 dark:bg-[#1e1e1e]/90 backdrop-blur-2xl rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all border border-gray-200/40 dark:border-gray-700/40 animate-slideIn">
+          <div className="bg-white/90 dark:bg-[#1e1e1e]/90 backdrop-blur-2xl rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all border border-gray-200/40 dark:border-gray-700/40 animate-slideUp">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 p-3 rounded-full">
                 <Calendar className="w-6 h-6" />

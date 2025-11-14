@@ -36,7 +36,9 @@ export const COURSE_COLORS = [
 export const TIMETABLE_CONFIG = {
   startHour: 8,    // 8 AM
   endHour: 21,     // 9 PM
-  slotHeight: 50,  // pixels per hour (more compact to reduce scrolling)
+  // Slightly shorter grid to reduce vertical scroll on phones,
+  // while keeping blocks readable
+  slotHeight: 44,  // pixels per hour
   headerHeight: 60,
   sidebarWidth: 80,
 };
