@@ -319,6 +319,63 @@ describe('Schedule Generation Algorithm', () => {
     
   });
   
+  test('4.4: Seminar-only course (no Lecture) generates schedules', () => {
+    const seminarOnly: Course = {
+      courseCode: 'GECC1000',
+      courseName: 'College Assembly',
+      department: 'Chung Chi College',
+      credits: 0,
+      term: '2025-26-T2',
+      career: 'Undergraduate',
+      prerequisites: [],
+      sections: [
+        {
+          sectionId: 'A1',
+          sectionType: 'Seminar',
+          classNumber: 8130,
+          instructor: { name: 'Staff' },
+          timeSlots: [
+            { day: 'Friday', startTime: '11:30', endTime: '13:15', location: 'CCCC' },
+          ],
+          quota: 4000,
+          enrolled: 2315,
+          seatsRemaining: 1685,
+          language: 'C&E&P',
+          addConsent: true,
+          dropConsent: true,
+        },
+        {
+          sectionId: 'AA01',
+          sectionType: 'Seminar',
+          classNumber: 8165,
+          instructor: { name: 'Staff' },
+          timeSlots: [
+            { day: 'Friday', startTime: '11:30', endTime: '13:15', location: 'CCCC' },
+          ],
+          quota: 4000,
+          enrolled: 975,
+          seatsRemaining: 3025,
+          language: 'C&E&P',
+          addConsent: true,
+          dropConsent: true,
+        },
+      ],
+      lastUpdated: new Date('2025-11-13'),
+    };
+
+    const courses: Course[] = [seminarOnly];
+    const options: ScheduleGenerationOptions = { preference: null };
+    const schedules = generateSchedules(courses, options);
+
+    expect(schedules.length).toBeGreaterThan(0);
+    // Each schedule should contain exactly one selected section for this course
+    schedules.forEach((sch) => {
+      expect(sch.sections.length).toBe(1);
+      expect(sch.sections[0].course.courseCode).toBe('GECC1000');
+      expect(sch.sections[0].selectedSection.sectionType).toBe('Seminar');
+    });
+  });
+
   // ==========================================================================
   // 2. CONFLICT DETECTION TESTS
   // ==========================================================================

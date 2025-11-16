@@ -287,13 +287,16 @@ function generateValidCombinationsWithPruning(
   // OPTIMIZATION: Analyze courses and sort them to maximize day separation
   // Prioritize courses that have Tue/Thu options, as these create natural separation
   const coursesWithAnalysis = courses.map(course => {
-    const lectures = course.sections.filter(s => s.sectionType === 'Lecture');
+    // Use lectures as anchors when present; otherwise, use all sections as anchors
+    const anchorSections = course.sections.some(s => s.sectionType === 'Lecture')
+      ? course.sections.filter(s => s.sectionType === 'Lecture')
+      : course.sections;
     let hasTueThu = false;
     let hasMonWedFri = false;
     
-    for (const lecture of lectures) {
-      if (excludeFullSections && !hasAvailableSeats(lecture)) continue;
-      const days = lecture.timeSlots.map(slot => slot.day);
+    for (const anchor of anchorSections) {
+      if (excludeFullSections && !hasAvailableSeats(anchor)) continue;
+      const days = anchor.timeSlots.map(slot => slot.day);
       const hasMon = days.includes('Monday');
       const hasTue = days.includes('Tuesday');
       const hasWed = days.includes('Wednesday');
@@ -476,8 +479,16 @@ function getCourseSectionCombinations(
   let lectures = course.sections.filter(s => s.sectionType === 'Lecture');
   
   if (lectures.length === 0) {
-    console.warn(`Course ${course.courseCode} has no lecture sections`);
-    return [];
+    // Support courses without explicit "Lecture" sections (e.g., Seminar-only or Assembly)
+    // Treat each available section as a standalone selectable option.
+    const baseSections = course.sections.filter(s => !excludeFullSections || hasAvailableSeats(s));
+    if (baseSections.length === 0) {
+      return [];
+    }
+    return baseSections.map((section) => [{
+      course,
+      selectedSection: section,
+    }]);
   }
 
   // OPTIMIZATION: Sort lectures to try those with better day patterns first
