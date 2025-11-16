@@ -1,264 +1,410 @@
-# 🎓 Queuesis | The smarter way to queue courses at CUHK
+# Queuesis — CUHK Timetable Planner
 
-A CUHK-focused timetable builder that pairs drag-and-drop editing with a deterministic schedule generator. Course data is sourced from official CUSIS exports (converted to JSON via our tooling) and can be synced into MongoDB when needed.
+<div align="center">
 
-## ✨ Features
+**A modern, intelligent timetable planner built for CUHK students**
 
-### 🎯 Dual Scheduling Modes
+![Release Date](https://img.shields.io/badge/Release%20Date-Nov%2015%202025-ebf2fa?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-427aa1?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Active-a5be00?style=for-the-badge)
 
-- **Manual mode** – Drag sections to lay out the timetable manually.
-- **Auto mode** – Algorithmic generator (no AI) that enumerates valid section combinations and scores them against your preferences.
+[Live Demo](https://queuesis.vercel.app) • [Report Bug](https://github.com/Aplkalex/cuhk-scheduler/issues) • [Request Feature](https://github.com/Aplkalex/cuhk-scheduler/issues)
 
-### 📅 Visual Timetable
+</div>
 
-- Clean, intuitive weekly calendar view
-- Color-coded courses for easy identification
-- Real-time conflict highlighting
-- Dark mode support
+---
 
-### 🔍 Smart Course Search
+## 🎯 Overview
 
-- Search by course code, name, or department
-- Filter courses by term (Term 1, Term 2, Whole Year)
-- Department-based browsing
-- Instant results as you type
+Queuesis is a CUHK-focused timetable planner that combines intuitive drag-and-drop editing with a powerful deterministic schedule generator. Course data is sourced from official CUSIS Excel exports and can optionally be synced to MongoDB Atlas via Prisma for enhanced performance.
 
-### ⚙️ Backend Snapshot
+### Why Queuesis?
 
-- Next.js route handlers expose `/api/courses`, `/api/courses/[code]`, `/api/terms`, and `/api/health`.
-- MongoDB Atlas is supported but optional; APIs fall back to the converted JSON dataset and, lastly, the static mocks.
-- Data sync is currently manual (Excel → JSON → Mongo). Automated scraping is planned for a later phase.
+- **Smart Scheduling**: Deterministic algorithm with 6 preference modes
+- **Real-time Validation**: Instant conflict detection as you build your schedule
+- **Flexible Data**: Works with or without a database connection
+- **Modern Stack**: Built with Next.js 16, React 19, and TypeScript
 
-### ⚡ Preference-Aware Generation
+---
 
-- **⚡ Short Breaks** – minimize downtime between classes.
-- **☕ Long Breaks** – maximize ≥60‑minute lunch/study gaps.
-- **🎯 Consistent** – keep start times aligned throughout the week.
-- **🌅 Start Late** – push classes later in the day.
-- **🌆 End Early** – finish as early as possible.
-- **🗓️ Days Off** – pack sections into fewer days.
+## ✨ Key Features
 
-### 🛡️ Conflict Detection
+### 📅 Intelligent Scheduling
 
-- Automatic time conflict detection
-- Visual indicators for overlapping classes
+Choose from multiple optimization preferences:
+
+- **⚡ Short Breaks** — Minimize downtime between classes
+- **☕ Long Breaks** — Maximize lunch/study gaps (≥60 minutes)
+- **🎯 Consistent Times** — Align start times throughout the week
+- **🌅 Start Late** — Push classes later in the day
+- **🌆 End Early** — Finish your day as early as possible
+- **🗓️ Days Off** — Pack sections into fewer days for free weekdays
+
+### 🛡️ Smart Conflict Detection
+
+- Automatic time overlap detection
+- Visual conflict indicators
 - Real-time validation when adding courses
-- Clear error messages and suggestions
+- Clear error messages with helpful suggestions
 
-### 📊 Schedule Management
+### 🎨 Modern User Experience
 
-- Browse multiple generated schedules with navigation arrows
-- Compare different schedule combinations
-- One-click schedule clearing with confirmation
-- Persistent schedule state
-
-### 🎨 Modern UI/UX
-
-- CUHK-themed purple branding
-- Glass-morphism effects and smooth animations
+- Clean, CUHK-themed purple interface
 - Responsive design for desktop and mobile
-- Hover tooltips for feature explanations
-- Gradient backgrounds and modern styling
+- Dark mode support
+- Smooth animations and glass morphism effects
+- Intuitive drag-and-drop interface
 
-## 🚀 Getting Started
+### 🔍 Advanced Search & Filtering
+
+- Search by course code, name, or instructor
+- Filter by term and department
+- Browse multiple generated schedules
+- One-click schedule clearing
+
+---
+
+## 🚀 Technology Stack
+
+| Category | Technologies |
+|----------|-------------|
+| **Framework** | Next.js 16 (App Router), React 19, TypeScript 5 |
+| **Styling** | Tailwind CSS 4, next-themes, Lucide React |
+| **Database** | Prisma 6, MongoDB Atlas (optional) |
+| **Interactions** | @dnd-kit (drag & drop) |
+| **Testing** | Jest 30.x, React Testing Library |
+| **Tooling** | xlsx, ts-node, ESLint 9.x |
+
+---
+
+## 📂 Project Structure
+
+```
+queuesis/
+├── src/
+│   ├── app/
+│   │   ├── api/              # Next.js API routes
+│   │   ├── page.tsx          # Main timetable page
+│   │   ├── layout.tsx        # Root layout with theme
+│   │   └── globals.css       # Global styles
+│   ├── components/           # React UI components
+│   ├── lib/                  # Scheduling engine & utilities
+│   └── data/                 # Generated JSON & mock data
+├── prisma/
+│   └── schema.prisma         # MongoDB schema
+├── scripts/
+│   ├── convert-excel.ts      # Excel → JSON converter
+│   └── import-json.ts        # JSON → MongoDB importer
+├── docs/                     # API documentation
+└── __tests__/                # Test suites
+```
+
+---
+
+## 🏁 Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ 
-- npm, yarn, or pnpm
+- Node.js 18 or higher
+- npm or yarn
+- MongoDB Atlas account (optional)
 
 ### Installation
 
-1. Clone the repository:
+1. **Clone the repository**
+
 ```bash
 git clone https://github.com/Aplkalex/cuhk-scheduler.git
 cd cuhk-scheduler
 ```
 
-2. Install dependencies:
+2. **Install dependencies**
+
 ```bash
 npm install
 ```
 
-3. Set up environment variables (optional for MongoDB):
+3. **Set up environment variables**
+
 ```bash
 cp .env.local.example .env.local
-# Edit .env.local with your MongoDB URI
 ```
 
-4. Run the development server:
+Edit `.env.local` with your configuration (see [Configuration](#-configuration) below).
+
+4. **Run the development server**
+
 ```bash
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+5. **Open your browser**
 
-### Running Tests
+Navigate to [http://localhost:3000](http://localhost:3000)
+
+---
+
+## ⚙️ Configuration
+
+Create a `.env.local` file with the following variables:
+
+```env
+# MongoDB Connection (optional - app works without it)
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/queuesis
+
+# Fallback Data Settings
+ALLOW_FALLBACK_DATA=true
+
+# Custom JSON Data Path (optional)
+GENERATED_COURSES_PATH=data/courses-2025-26-T2.json
+```
+
+### Environment Variable Details
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGODB_URI` | No | MongoDB Atlas connection string. If not provided, app uses JSON/mock data |
+| `ALLOW_FALLBACK_DATA` | No | Set to `false` to enforce database-only mode (default: `true`) |
+| `GENERATED_COURSES_PATH` | No | Path to custom course JSON file |
+
+---
+
+## 📊 Data Management
+
+### Data Source Hierarchy
+
+The app follows this priority order:
+
+1. **MongoDB Atlas** (if `MONGODB_URI` is configured)
+2. **Generated JSON** (from `GENERATED_COURSES_PATH` or default path)
+3. **Static Mock Data** (fallback for development)
+
+### Converting Excel to JSON
+
+```bash
+npm run convert-excel -- --input path/to/cusis-export.xlsx --output data/courses-2025-26-T2.json
+```
+
+### Importing to MongoDB
+
+```bash
+npm run import-json -- --file data/courses-2025-26-T2.json
+```
+
+### Data Model
+
+**Course Schema:**
+- `courseCode` (unique identifier)
+- `courseName`, `department`, `credits`
+- `description`, `prerequisites`
+- `sections` (array of class sections with timeslots)
+- `term`, `career`, `lastUpdated`
+
+**Indexes:**
+- `courseCode` (unique)
+- `term`, `department` (indexed for fast filtering)
+
+---
+
+## 🔌 API Documentation
+
+### Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/terms` | GET | List available terms |
+| `/api/courses` | GET | List/filter courses |
+| `/api/courses/[code]` | GET | Get single course details |
+
+### Query Parameters
+
+**`/api/courses`:**
+- `term` — Filter by academic term
+- `department` — Filter by department code
+- `search` — Search course code/name/instructor
+- `testMode` — Use mock data (development only)
+
+Example:
+```bash
+GET /api/courses?term=2025-26-T2&department=CSCI&search=data
+```
+
+For full API documentation, see [`docs/API.md`](docs/API.md).
+
+---
+
+## 🧪 Testing
+
+Run the test suite:
 
 ```bash
 # Run all tests
 npm test
 
-# Run tests in watch mode
+# Watch mode
 npm run test:watch
 
-# Generate coverage report
+# Coverage report
 npm run test:coverage
 ```
 
-## 🏗️ Project Structure
-
-```
-src/
-├── app/
-│   ├── api/                    # API routes (future backend)
-│   ├── page.tsx                # Main scheduler page
-│   ├── layout.tsx              # Root layout with theme provider
-│   └── globals.css             # Global styles
-├── components/
-│   ├── CourseList.tsx          # Course search and selection
-│   ├── ModeToggle.tsx          # Manual/Auto mode switcher
-│   ├── Timetable.tsx           # Visual weekly schedule
-│   └── ui/                     # Reusable UI components
-├── lib/
-│   ├── schedule-generator.ts   # Core scheduling algorithm
-│   ├── schedule-utils.ts       # Utility functions
-│   ├── time-utils.ts           # Time conversion helpers
-│   └── __tests__/              # Jest unit tests
-└── data/
-    ├── mock-courses.ts         # Sample CUHK course data (main manual dataset)
-    └── test-courses.ts         # Smaller fixtures for tests / demo mode
-```
-
-## 🛠️ Tech Stack
-
-### Core Framework
-- **Next.js 16.0.1** - React framework with Turbopack
-- **React 19.2.0** - UI library
-- **TypeScript 5** - Type safety
-
-### Styling
-- **Tailwind CSS 4.0** - Utility-first CSS framework
-- **next-themes 0.4.6** - Dark mode support
-- **Lucide React 0.552** - Icon library
-
-### Functionality
-- **@dnd-kit** - Drag and drop functionality
-- **MongoDB 6.20** - Database (optional)
-
-### Development & Testing
-- **Jest 30.2** - Testing framework
-- **Testing Library** - React component testing
-- **ESLint** - Code linting
-- **TypeScript** - Static type checking
-
-## 📊 Algorithm Details
-
-### Schedule Generation
-
-The auto-generate mode uses a sophisticated algorithm to create valid schedules:
-
-1. **Cartesian Product Generation**: Creates all possible combinations of course sections
-2. **Conflict Detection**: Filters out schedules with time conflicts
-3. **Preference Scoring**: Ranks schedules based on selected optimization preference
-4. **Color Assignment**: Assigns unique colors per course for visual clarity
-
-### Optimization Algorithms
-
-Each preference uses a specific scoring function:
-- **Short Breaks**: Minimizes total gap minutes between classes
-- **Long Breaks**: Counts breaks ≥60 minutes
-- **Consistent Start**: Minimizes variance in daily start times
-- **Start Late**: Maximizes average start time
-- **End Early**: Minimizes average end time
-- **Days Off**: Maximizes free weekdays
-
-## 🔍 Course Data Sync
-
-CUHK does not expose a public API, so we currently run a “manual sync” pipeline:
-
-1. Obtain the official CUSIS Excel dump.
-2. Convert it to our `Course[]` JSON schema:
-   ```bash
-   npm run convert:excel -- --input "CUHK CUSIS Course offering (Nov 12).xlsx" --term 2025-26-T2 --output data/courses-2025-26-T2.json
-   ```
-3. (Optional) Import into MongoDB:
-   ```bash
-   npm run import:courses -- data/courses-2025-26-T2.json
-   ```
-4. Restart the dev server. `/api/courses` will read from Mongo if available, otherwise it falls back to the generated JSON and finally to `mockCourses`.
-
-Helpful extras:
-- For tiny fixtures, edit `src/data/mock-courses.ts` / `src/data/test-courses.ts`.
-- Set `GENERATED_COURSES_PATH` if your JSON lives elsewhere.
-- Full instructions live in [docs/manual-data-entry.md](docs/manual-data-entry.md).
-- ⚠️ **Disclaimer:** Data may lag behind CUSIS. Always confirm in CUSIS before enrolling.
-
-Future plans include reviving the scraper and/or letting contributors upload JSON/CSV, but the manual workflow keeps the project moving today.
-
-## ⚙️ Backend & Deployment Plan
-
-| Layer | Current status | Next step |
-| --- | --- | --- |
-| Frontend | Next.js 16 + Tailwind, runs locally (Vercel-ready). | Deploy to Vercel with envs + preview builds. |
-| API | Next.js route handlers in the same repo. | Graduate to dedicated Node/Express service if needed. |
-| Database | MongoDB Atlas (optional), Prisma client. | Harden schema, add migrations/seed routines. |
-| Data sync | Manual Excel → JSON → Mongo pipeline. | Reintroduce scraper or contributor upload portal. |
-| Automation | Manual CLI commands. | GitHub Actions cron to refresh datasets. |
-
-Recommended hosting combo: Vercel for the UI, Vercel/Render/Railway for APIs, MongoDB Atlas for data, and GitHub Actions for background jobs once automation lands.
-
-## 💡 Core Functions (MVP)
-
-- Search by course code, name, or instructor.
-- Add/remove courses and drag them around the timetable.
-- Detect conflicts instantly with clear visual cues.
-- Apply preference filters (short breaks, days off, start late, end early, etc.).
-- Refresh datasets through the Excel → JSON pipeline.
-- (Roadmap) export timetables (PNG/ICS) and save multiple personal plans.
-
-## ✅ Testing
-
-The project includes comprehensive unit tests for the core scheduling algorithm:
-- ✅ Schedule generation with multiple courses
-- ✅ Conflict detection accuracy
-- ✅ Preference scoring functions
-- ✅ Edge cases (no valid schedules, single course, etc.)
-
-Run `npm test` to see all 14 passing tests.
-
-## 🚧 Roadmap
-
-- [ ] Automated CUHK data sync (scraper or contributor uploads)
-- [ ] User accounts to save/shared schedules
-- [ ] Timetable export (PNG/ICS) + Google Calendar push
-- [ ] Mobile-first/Draggable UX polish
-- [ ] Crowdsourced course notes/ratings
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-MIT License - see LICENSE file for details
-
-## 🙏 Acknowledgments
-
-- Inspired by [UBC Course Scheduler](https://courses.students.ubc.ca/)
-- Built for CUHK students, by CUHK students
-- Special thanks to the CUHK community for feedback and testing
-
-## 📧 Contact
-
-For questions, suggestions, or bug reports, please open an issue on GitHub.
+Test coverage includes:
+- ✅ Scheduling algorithm correctness
+- ✅ Conflict detection edge cases
+- ✅ Component behavior validation
+- ✅ API route functionality
 
 ---
 
-Made with 💜 at CUHK
+## 🚢 Deployment
+
+> **Note:** This project is already deployed on Vercel. The following instructions are for reference or if you wish to deploy your own instance.
+
+### Deploy to Vercel (Optional)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Aplkalex/cuhk-scheduler)
+
+1. Fork this repository
+2. Import your fork into Vercel
+3. Configure environment variables in Vercel dashboard
+4. Deploy!
+
+### Environment Variables (Production)
+
+Set these in **Vercel → Project → Settings → Environment Variables**:
+
+- `MONGODB_URI` — Your MongoDB Atlas connection string
+- `ALLOW_FALLBACK_DATA` — Set to `false` after seeding database
+- `GENERATED_COURSES_PATH` — (optional) Custom JSON path
+
+### Verification Checklist
+
+After deployment, verify:
+- ✅ `/api/health` returns healthy status
+- ✅ `/api/terms` lists available terms
+- ✅ `/api/courses?term=2025-26-T2` returns course data
+- ✅ Main page loads without errors
+
+---
+
+## 🛠️ Troubleshooting
+
+### No Data Returned
+
+**Problem:** API endpoints return empty arrays
+
+**Solutions:**
+- Verify `MONGODB_URI` is correct and accessible
+- Check that `GENERATED_COURSES_PATH` points to an existing JSON file
+- Ensure `ALLOW_FALLBACK_DATA=true` during initial setup
+- Review Vercel logs for connection errors
+
+### Excel Conversion Errors
+
+**Problem:** `convert-excel.ts` fails or produces invalid JSON
+
+**Solutions:**
+- Verify Excel file format matches expected CUSIS export structure
+- Use `--sheet` flag to specify correct worksheet name
+- Check that all required columns are present
+- See `scripts/convert-excel.ts` for column mapping details
+
+### Prisma/MongoDB Issues on Vercel
+
+**Problem:** Database connections fail in production
+
+**Solutions:**
+- Confirm environment variables are set in correct Vercel environment
+- Check MongoDB Atlas IP allowlist includes `0.0.0.0/0` for serverless
+- Verify database user has `readWrite` permissions
+- Review Vercel function logs for detailed error messages
+
+### Security Concerns
+
+**Problem:** Connection string exposed or compromised
+
+**Actions:**
+1. Rotate MongoDB credentials immediately in Atlas
+2. Update `MONGODB_URI` in Vercel environment variables
+3. Review access logs in MongoDB Atlas
+4. Ensure `.env.local` is in `.gitignore`
+
+---
+
+## 🗺️ Roadmap
+
+### Data Automation
+- [ ] GitHub Actions for scheduled Excel → JSON → MongoDB imports
+- [ ] Contributor upload portal for course data
+- [ ] Automatic term detection and validation
+
+### Product Features
+- [ ] User accounts for saving/sharing schedules
+- [ ] Export to PNG/ICS/Google Calendar
+- [ ] Advanced search by instructor and room
+- [ ] Shopping cart for course selection
+- [ ] Email notifications for course changes
+
+### Performance
+- [ ] Database-backed text search with indexes
+- [ ] Server-side pagination
+- [ ] CDN caching for static course data
+- [ ] Optimistic UI updates
+
+### User Experience
+- [ ] Mobile drag-and-drop improvements
+- [ ] ARIA/keyboard accessibility enhancements
+- [ ] Onboarding tutorial
+- [ ] Schedule comparison view
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how to get started:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Development Guidelines
+
+- Follow existing code style and conventions
+- Write tests for new features
+- Update documentation as needed
+- Keep commits atomic and well-described
+
+---
+
+## 👥 Team
+
+**Maintainer:** [Aplkalex](https://github.com/Aplkalex)
+
+**Contributors:** Open to community contributions! See [Contributing](#-contributing) section.
+
+---
+
+## 🙏 Acknowledgments
+
+- Built for CUHK students, by CUHK students
+- Inspired by university scheduling tools worldwide, particularly [UBC Scheduler](https://ubcscheduler.ca/)
+- Special thanks to all contributors and testers
+
+---
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+<div align="center">
+
+**Made with 💜 for CUHK**
+
+[⬆ Back to Top](#queuesis--cuhk-timetable-planner)
+
+</div>
