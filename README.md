@@ -24,13 +24,7 @@
 <div align="center">
 
 ### Main Timetable Interface
-*Coming*
-
-### Schedule Generation
-*Coming*
-
-### Course Search
-*Coming*
+<img width="3006" height="1696" alt="SCR-20251115-tozs-modified" src="https://github.com/user-attachments/assets/d444ab74-03f1-48a3-9e5b-5bf4461671b4" />
 
 </div>
 
