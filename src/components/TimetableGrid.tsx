@@ -991,8 +991,14 @@ export function TimetableGrid({
 
                       // Wrapper to host the course block and a sibling floating delete button overlay.
                       const innerStyle = { ...style, top: 0, left: 0, width: '100%' } as CourseStyle;
+                      const wrapperStyle = {
+                        top: (style as any).top,
+                        left: (style as any).left,
+                        height: (style as any).height,
+                        width: (style as any).width,
+                      } as CSSProperties;
                       return (
-                        <div key={entry.key} className="absolute group" style={style as CSSProperties}>
+                        <div key={entry.key} className="absolute group" style={wrapperStyle}>
                           <DraggableCourseBlock
                             selectedCourse={entry.selectedCourse}
                             blockId={entry.key}

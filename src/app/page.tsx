@@ -1463,11 +1463,11 @@ export default function Home() {
       <main className={`flex-1 w-full px-2 sm:px-4 lg:px-6 py-2 lg:py-3 bg-transparent flex flex-col ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}>
         {/* Warnings container - only takes space when needed */}
         <div className="max-w-[1600px] w-full mx-auto space-y-2 mb-2 flex-shrink-0">
-          {/* Term availability notice - Red, dismissible */}
+          {/* Term availability notice - Red, dismissible (match disclaimer styling) */}
           {showTerm2OnlyNotice && (
-            <div className="bg-red-50/75 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/60 rounded-lg px-3 py-2 flex items-center gap-2 shadow-lg">
+            <div className="bg-red-50/70 dark:bg-red-900/10 backdrop-blur-md border border-red-200/50 dark:border-red-800/30 rounded-lg p-2 flex items-center gap-2 shadow-lg">
               <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
-              <p className="text-[11px] sm:text-xs text-red-800 dark:text-red-200 flex-1">
+              <p className="text-[11px] sm:text-xs text-red-800 dark:text-red-300 flex-1">
                 Current version only has 2025-26 Term 2 data. Other terms may be incomplete or unavailable.
               </p>
               <button

@@ -93,12 +93,13 @@ function DraggableCourseBlock({
             onRemove(selectedCourse);
           }}
           className={cn(
-            'absolute -top-2 -right-2 w-6 h-6 rounded-lg',
+            'absolute top-0 right-0 translate-x-[60%] -translate-y-[60%] w-7 h-7 rounded-full',
             'bg-red-500 hover:bg-red-600 text-white',
-            'flex items-center justify-center shadow-lg',
+            'shadow-[0_0_0_2px_rgba(255,255,255,0.96),0_10px_20px_rgba(0,0,0,0.45)]',
+            'flex items-center justify-center',
             'transition-all transform',
             'opacity-0 group-hover:opacity-100 scale-0 group-hover:scale-100',
-            'z-[150]'
+            'z-[100000]'
           )}
           title="Remove course"
         >
@@ -145,7 +146,7 @@ function DraggableCourseBlock({
         <div className="text-[10px] leading-tight opacity-90 truncate inline-flex items-center gap-1">
           {selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' : 'TUT'} {selectedCourse.selectedSection.sectionId}
           {selectedCourse.locked && (
-            <Lock className="w-3 h-3 opacity-80" aria-label="Locked" />
+            <Lock className="w-3 h-3 opacity-80 pointer-events-none" aria-label="Locked" />
           )}
         </div>
       </div>
