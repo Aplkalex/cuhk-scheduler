@@ -254,7 +254,8 @@ export function TimetableGrid({
   );
 
   const dayColumnClassName = cn(
-    'relative rounded-xl border overflow-hidden transition-all duration-200',
+    // allow floating controls to render beyond the card edge without clipping
+    'relative rounded-xl border overflow-visible transition-all duration-200',
     isFrosted
       ? 'backdrop-blur-sm border-gray-200/50 bg-gray-50/30 hover:border-gray-300/60 hover:bg-gray-50/40 dark:border-gray-700/40 dark:bg-white/[0.05] dark:hover:border-white/20 dark:hover:bg-white/[0.07]'
       : 'border-white/[0.05] bg-transparent hover:border-white/[0.12] dark:border-white/[0.05] dark:bg-transparent dark:hover:border-white/[0.18]'
@@ -265,10 +266,9 @@ export function TimetableGrid({
     : 'border-gray-200/35 dark:border-white/[0.08]';
 
   const courseBlockBaseClass = cn(
-    'absolute rounded-lg cursor-pointer group flex flex-col px-1.5 sm:px-2 py-1 sm:py-1.5 overflow-visible border transition-transform duration-200 ease-out',
-    isFrosted
-      ? 'backdrop-blur-xl shadow-sm hover:shadow-md'
-      : 'backdrop-blur-none shadow-[0_20px_36px_-28px_rgba(15,23,42,0.62)] hover:shadow-[0_24px_40px_-28px_rgba(15,23,42,0.72)]'
+    // Stronger rounding + clip inner visuals for truly rounded edges
+    'absolute rounded-xl cursor-pointer group flex flex-col px-1.5 sm:px-2 py-1 sm:py-1.5 overflow-hidden border transition-transform duration-200 ease-out bg-clip-padding',
+    isFrosted ? 'backdrop-blur-xl shadow-none hover:shadow-none' : 'backdrop-blur-none shadow-none hover:shadow-none'
   );
 
   const ghostBlockBaseClass = cn(
@@ -501,12 +501,12 @@ export function TimetableGrid({
         className={cn(
           ghostBlockBaseClass,
           'border-dashed',
-          isOver && 'scale-[1.05] shadow-2xl ring-4 ring-yellow-400/50',
-          !isOver && 'hover:scale-[1.02] hover:shadow-lg',
+          isOver && 'scale-[1.05]',
+          !isOver && 'hover:scale-[1.02]',
         )}
         style={ghostStyle}
       >
-        <div className="text-xs font-bold text-center drop-shadow-sm">
+        <div className="text-xs font-bold text-center">
           {section.sectionType === 'Lecture' ? 'LEC' : section.sectionType.toUpperCase()} {section.sectionId}
         </div>
         {section.instructor && (
@@ -515,7 +515,7 @@ export function TimetableGrid({
           </div>
         )}
         {isOver && (
-          <div className="text-[10px] font-semibold mt-0.5 text-yellow-100/90 drop-shadow-md">
+          <div className="text-[10px] font-semibold mt-0.5 text-yellow-100/90">
             ↓ Drop here
           </div>
         )}
@@ -610,7 +610,7 @@ export function TimetableGrid({
     const conflictBadge = hasConflict ? (
       <span
         title="Schedule conflict"
-        className="flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900 shadow-lg ring-1 ring-white/50 backdrop-blur"
+        className="flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900"
       >
         <AlertCircle className="h-2.5 w-2.5" />
       </span>
@@ -619,7 +619,7 @@ export function TimetableGrid({
     const fullBadge = isFull ? (
       <span
         title="Section is full"
-        className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-400/90 text-white shadow-lg ring-1 ring-white/40 backdrop-blur"
+        className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-400/90 text-white"
       >
         <AlertCircle className="h-2.5 w-2.5" />
       </span>
@@ -693,10 +693,12 @@ export function TimetableGrid({
         className={cn(
           courseBlockBaseClass,
           'hover:scale-[1.02]',
-          isFull && 'border-2 border-red-500/90 dark:border-red-400/90 ring-2 ring-red-300/70',
-          hasConflict && !isFull && 'border-2 border-yellow-500/90 dark:border-yellow-400/90 ring-2 ring-yellow-200/70',
+          // Use border color to indicate state; avoid outer ring which can look square against rounded corners
+          isFull && 'border-2 border-red-500/90 dark:border-red-400/90',
+          hasConflict && !isFull && 'border-2 border-yellow-500/90 dark:border-yellow-400/90',
           isDragging && 'opacity-0',
-          isValidDropTarget && 'ring-2 ring-yellow-400/80 scale-105 shadow-lg animate-pulse',
+          // Avoid outer ring; keep subtle scale/shadow only
+          isValidDropTarget && 'scale-105 shadow-lg animate-pulse',
           isDraggable && 'cursor-grab active:cursor-grabbing',
           !isDraggable && enableDragDrop && 'cursor-default',
         )}
@@ -704,18 +706,23 @@ export function TimetableGrid({
           ...style,
           // Critical for mobile Safari/Chrome: ensure drags capture move events and don't scroll
           touchAction: 'none',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          contain: 'layout paint',
           backgroundImage: hasConflict
             ? `repeating-linear-gradient(135deg, rgba(250, 204, 21, 0.28) 0px, rgba(250, 204, 21, 0.08) 12px, transparent 12px, transparent 24px)`
             : undefined,
           backgroundSize: hasConflict ? 'auto' : undefined,
-          borderColor: isFull
+          borderColor: selectedCourse.locked
+            ? 'rgba(255,255,255,0.95)'
+            : (isFull
             ? 'rgba(225, 29, 72, 0.94)'
             : hasConflict
               ? 'rgba(234, 179, 8, 0.95)'
-              : palette.border,
-          boxShadow: selectedCourse.locked
-            ? `${typeof emphasizedBoxShadow === 'string' && emphasizedBoxShadow.length ? emphasizedBoxShadow + ', ' : ''}0 0 0 2px rgba(255,255,255,0.95)`
-            : emphasizedBoxShadow,
+              : palette.border),
+          borderWidth: selectedCourse.locked ? 2 : undefined,
+          // Remove outer shadows entirely to avoid square-looking corners from background glow
+          boxShadow: 'none',
           // Z-index logic: shorter courses appear on top when conflicting
           // Base z-index: 1 (normal), 10+ (conflicts)
           // For conflicts: z-index = 100 - duration (so 50min class = z50, 180min class = z20)
@@ -745,7 +752,7 @@ export function TimetableGrid({
         {/* Drag handle - only show if draggable */}
         {isDraggable && (
           <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none">
-            <GripVertical className="w-3 h-3 text-white drop-shadow-lg" />
+            <GripVertical className="w-3 h-3 text-white" />
           </div>
         )}
 
@@ -763,12 +770,8 @@ export function TimetableGrid({
               onRemoveCourse(selectedCourse);
             }}
             className={cn(
-              'absolute -top-2 -right-2 w-6 h-6 rounded-full',
-              'bg-red-500 hover:bg-red-600 text-white',
-              'flex items-center justify-center shadow-lg',
-              'transition-all transform',
-              'opacity-0 group-hover:opacity-100 scale-0 group-hover:scale-100',
-              'z-[150]'
+              // keep legacy button invisible (we render a later overlay below)
+              'hidden'
             )}
             title="Remove course"
           >
@@ -776,8 +779,8 @@ export function TimetableGrid({
           </button>
         )}
 
-        {/* Content */}
-        <div className={cn('flex h-full flex-col pt-0.5 pl-2', isCompactBlock ? 'justify-center' : 'justify-start')}>
+	        {/* Content */}
+	        <div className={cn('flex h-full flex-col pt-0.5 pl-2', isCompactBlock ? 'justify-center' : 'justify-start')}>
           {showVerticalIconStack ? (
             <>
               {(conflictBadge || fullBadge) && (
@@ -789,7 +792,8 @@ export function TimetableGrid({
                 >
                   {conflictBadge}
                   {fullBadge}
-                </div>
+	        </div>
+
               )}
 
               {isDraggable && (
@@ -830,7 +834,7 @@ export function TimetableGrid({
                     selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' :
                     selectedCourse.selectedSection.sectionType)} {selectedCourse.selectedSection.sectionId}
                   {selectedCourse.locked && (
-                    <Lock className="w-2.5 h-2.5 opacity-80" aria-label="Locked" />
+                    <Lock className="w-2.5 h-2.5 opacity-80 pointer-events-none" aria-label="Locked" />
                   )}
                 </span>
               ) : (
@@ -856,7 +860,7 @@ export function TimetableGrid({
                     selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' :
                     selectedCourse.selectedSection.sectionType)} {selectedCourse.selectedSection.sectionId}
                   {selectedCourse.locked && (
-                    <Lock className="w-2.5 h-2.5 opacity-80" aria-label="Locked" />
+                    <Lock className="w-2.5 h-2.5 opacity-80 pointer-events-none" aria-label="Locked" />
                   )}
                 </span>
                 </>
@@ -875,7 +879,7 @@ export function TimetableGrid({
                   selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' :
                   selectedCourse.selectedSection.sectionType} {selectedCourse.selectedSection.sectionId}
                   {selectedCourse.locked && (
-                    <Lock className="w-3 h-3 opacity-80" aria-label="Locked" />
+                    <Lock className="w-3 h-3 opacity-80 pointer-events-none" aria-label="Locked" />
                   )}
                 </span>
               </div>
@@ -985,17 +989,32 @@ export function TimetableGrid({
                     style.width = `calc(${widthPercent}% - ${OVERLAP_GAP}px)`;
                     style.left = `calc(${widthPercent * entry.lane}% + ${OVERLAP_GAP / 2}px)`;
 
-                    return (
-                      <DraggableCourseBlock
-                        key={entry.key}
-                        selectedCourse={entry.selectedCourse}
-                        blockId={entry.key}
-                        style={style}
-                        slot={entry.slot}
-                        isCompactWidth={entry.overlapCount >= 2}
-                        overlapCount={entry.overlapCount}
-                      />
-                    );
+                      // Wrapper to host the course block and a sibling floating delete button overlay.
+                      const innerStyle = { ...style, top: 0, left: 0, width: '100%' } as CourseStyle;
+                      return (
+                        <div key={entry.key} className="absolute group" style={style as CSSProperties}>
+                          <DraggableCourseBlock
+                            selectedCourse={entry.selectedCourse}
+                            blockId={entry.key}
+                            style={innerStyle}
+                            slot={entry.slot}
+                            isCompactWidth={entry.overlapCount >= 2}
+                            overlapCount={entry.overlapCount}
+                          />
+                          {onRemoveCourse && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRemoveCourse(entry.selectedCourse);
+                              }}
+                              className="hidden sm:flex absolute top-0 right-0 translate-x-[55%] -translate-y-[55%] w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white items-center justify-center shadow-[0_10px_14px_rgba(0,0,0,0.35)] z-[200000] opacity-0 group-hover:opacity-100 scale-0 group-hover:scale-100 transition-transform"
+                              title="Remove course"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
                   });
                 })()}
 
