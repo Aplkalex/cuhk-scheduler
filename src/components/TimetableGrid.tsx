@@ -394,15 +394,19 @@ export function TimetableGrid({
           );
         }
       }
-      // Tutorial swap (only if same parent lecture)
-      else if (draggedSection.sectionType === 'Tutorial' && targetSection.sectionType === 'Tutorial') {
-        if (isSameCourse && draggedSection.parentLecture === targetSection.parentLecture) {
-          if (onSwapTutorials) {
-            onSwapTutorials(
-              draggedCourse.course.courseCode,
-              draggedSection.sectionId,
-              targetSection.sectionId
-            );
+      // Non-lecture same-type swaps (Tutorial, Lab, etc.)
+      else if (draggedSection.sectionType !== 'Lecture' && targetSection.sectionType === draggedSection.sectionType) {
+        if (isSameCourse) {
+          const dParent = draggedSection.parentLecture;
+          const tParent = targetSection.parentLecture;
+          if ((dParent == null && tParent == null) || dParent === tParent) {
+            if (onSwapTutorials) {
+              onSwapTutorials(
+                draggedCourse.course.courseCode,
+                draggedSection.sectionId,
+                targetSection.sectionId
+              );
+            }
           }
         }
       }
@@ -662,12 +666,17 @@ export function TimetableGrid({
         return true;
       }
 
-      // Allow tutorial to tutorial swap only if same parent lecture
-      if (draggedSection.sectionType === 'Tutorial' && targetSection.sectionType === 'Tutorial') {
-        return (
-          draggedCourse.course.courseCode === selectedCourse.course.courseCode &&
-          draggedSection.parentLecture === targetSection.parentLecture
-        );
+      // Allow non-lecture same-type swaps within the same course.
+      // - Tutorials: require same parentLecture
+      // - Labs (and other non-lecture types): require same type, and if parentLecture exists, it must match
+      if (draggedSection.sectionType !== 'Lecture' && targetSection.sectionType === draggedSection.sectionType) {
+        if (draggedCourse.course.courseCode !== selectedCourse.course.courseCode) {
+          return false;
+        }
+        const dParent = draggedSection.parentLecture;
+        const tParent = targetSection.parentLecture;
+        if (dParent == null && tParent == null) return true;
+        return dParent === tParent;
       }
 
       return false;
