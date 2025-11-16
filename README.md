@@ -15,7 +15,7 @@
 ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
 ![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
 
-[Live Demo](https://queuesis.vercel.app) • [Report Bug](https://github.com/Aplkalex/cuhk-scheduler/issues) • [Request Feature](https://github.com/Aplkalex/cuhk-scheduler/issues)
+[Get Started](https://queuesis.vercel.app) • [Report Bug](https://github.com/Aplkalex/cuhk-scheduler/issues) • [Request Feature](https://github.com/Aplkalex/cuhk-scheduler/issues)
 
 </div>
 
@@ -34,6 +34,7 @@
 
 - [Overview](#-overview)
 - [Key Features](#-key-features)
+- [Handoff Summary](docs/HANDOFF.md)
 - [Technology Stack](#-technology-stack)
 - [Project Structure](#-project-structure)
 - [Getting Started](#-getting-started)
@@ -101,6 +102,18 @@ Choose from multiple optimization preferences:
 - Filter by term and department
 - Browse multiple generated schedules
 - One-click schedule clearing
+
+### 🔒 Lock & Constraints
+
+- Lock any section (LEC/TUT/LAB) to freeze it on the timetable; locked blocks
+  - show a small lock icon next to the section label,
+  - are grey‑tinted with a white border,
+  - cannot be dragged, swapped, or removed.
+- Lock All / Unlock All for a course in “My Schedule” (locks both Lecture and its dependent Tutorial/Lab).
+- Auto‑Generate respects locks as hard constraints:
+  - The generator automatically includes locked courses even if not selected in chips,
+  - and only considers the locked section ids for those courses.
+  - Day‑Off and other preferences still apply to unlocked courses around your locks.
 
 ---
 
@@ -245,8 +258,8 @@ cuhk-scheduler/
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/Aplkalex/cuhk-scheduler.git
-cd cuhk-scheduler
+git clone https://github.com/Aplkalex/Queuesis.git
+cd Queuesis
 ```
 
 2. **Install dependencies**
@@ -280,14 +293,14 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 Create a `.env.local` file with the following variables:
 
 ```env
-# MongoDB Connection (optional - app works without it)
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/queuesis
+# MongoDB Connection (optional)
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/queuesis
 
 # Fallback Data Settings
 ALLOW_FALLBACK_DATA=true
 
 # Custom JSON Data Path (optional)
-GENERATED_COURSES_PATH=data/courses-2025-26-T2.json
+GENERATED_COURSES_PATH=data/<name>
 
 # UI Feature Flags (safe to expose)
 # Show the "Test Mode" toggle/banner in the UI (useful for local dev/QA).
@@ -326,8 +339,8 @@ The app follows this priority order for retrieving course data:
 
 ```bash
 npm run convert-excel -- \
-  --input "CUHK CUSIS Course offering (Nov 12).xlsx" \
-  --output data/courses-2025-26-T2.json
+  --input "<Your_excel_document>.xlsx" \
+  --output data/<name>.json
 ```
 
 **Options:**
@@ -341,7 +354,7 @@ npm run convert-excel -- \
 <summary><b>📤 Importing to MongoDB</b></summary>
 
 ```bash
-npm run import-json -- --file data/courses-2025-26-T2.json
+npm run import-json -- --file data/<name>.json
 ```
 
 **Prerequisites:**
@@ -428,11 +441,11 @@ Our test suite includes:
 
 | Category | Coverage | Details |
 |----------|----------|---------|
-| **Scheduling Algorithm** | ✅ Comprehensive | All preference modes, edge cases |
-| **Conflict Detection** | ✅ Comprehensive | Time overlaps, section conflicts |
-| **Course Selection** | ✅ Comprehensive | Adding/removing courses |
-| **Component Behavior** | ⚠️ Partial | Critical UI components |
-| **API Routes** | ⏳ Planned | Endpoint testing |
+| **Scheduling Algorithm** |  Comprehensive | All preference modes, edge cases |
+| **Conflict Detection** |  Comprehensive | Time overlaps, section conflicts |
+| **Course Selection** |  Comprehensive | Adding/removing courses |
+| **Component Behavior** |  Partial | Critical UI components |
+| **API Routes** |  Planned | Endpoint testing |
 
 ### Test Files
 
@@ -474,10 +487,10 @@ Set these in **Vercel → Project → Settings → Environment Variables**:
 ### Verification Checklist
 
 After deployment, verify:
-- ✅ `/api/health` returns healthy status
-- ✅ `/api/terms` lists available terms
-- ✅ `/api/courses?term=2025-26-T2` returns course data
-- ✅ Main page loads without errors
+- `/api/health` returns healthy status
+- `/api/terms` lists available terms
+- `/api/courses?term=2025-26-T2` returns course data
+- Main page loads without errors
 
 ---
 
@@ -527,7 +540,10 @@ After deployment, verify:
 
 ## 🗺️ Roadmap
 
-### 🎯 Short Term (Q1 2025)
+- [ ] **Export Features**
+  - Export timetable as PNG/PDF
+  - Generate ICS calendar files
+  - Google Calendar integration
 
 - [ ] **Data Automation**
   - GitHub Actions for scheduled data updates
@@ -544,35 +560,18 @@ After deployment, verify:
   - Keyboard navigation and ARIA improvements
   - Interactive onboarding tutorial
 
-### 🚀 Medium Term (Q2-Q3 2025)
+- [ ] **Intelligence Features**
+  - ML-based schedule recommendations
+  - Optimal path planning for degree requirements
 
 - [ ] **User Accounts & Persistence**
-  - Save schedules to user accounts
   - Share schedules via unique URLs
   - Schedule history and versioning
-
-- [ ] **Export Features**
-  - Export timetable as PNG/PDF
-  - Generate ICS calendar files
-  - Google Calendar integration
 
 - [ ] **Advanced Search**
   - Filter by instructor
   - Filter by building/room
   - Filter by time preferences
-  - Course rating integration
-
-### 🌟 Long Term (Q4 2025+)
-
-- [ ] **Collaboration Features**
-  - Group schedule planning
-  - Friend course recommendations
-  - Popular course combinations
-
-- [ ] **Intelligence Features**
-  - ML-based schedule recommendations
-  - Predict course availability
-  - Optimal path planning for degree requirements
 
 - [ ] **Mobile App**
   - Native iOS/Android apps
@@ -614,11 +613,11 @@ We welcome contributions! Here's how to get started:
 
 ### Development Guidelines
 
-- ✅ Follow existing code style and conventions
-- ✅ Write tests for new features
-- ✅ Update documentation as needed
-- ✅ Keep commits atomic and well-described
-- ✅ Ensure all tests pass before submitting PR
+- Follow existing code style and conventions
+- Write tests for new features
+- Update documentation as needed
+- Keep commits atomic and well-described
+- Ensure all tests pass before submitting PR
 
 ### Areas We Need Help With
 
