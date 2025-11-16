@@ -7,7 +7,7 @@ import { SelectedCourse, DayOfWeek, TimeSlot, Section } from '@/types';
 import { TIMETABLE_CONFIG, WEEKDAYS } from '@/lib/constants';
 import { timeToMinutes, formatTime, hasAvailableSeats } from '@/lib/schedule-utils';
 import { cn } from '@/lib/utils';
-import { X, AlertCircle, GripVertical } from 'lucide-react';
+import { X, AlertCircle, GripVertical, Lock } from 'lucide-react';
 
 interface TimetableGridDraggableProps {
   selectedCourses: SelectedCourse[];
@@ -142,8 +142,11 @@ function DraggableCourseBlock({
             </div>
           )}
         </div>
-        <div className="text-[10px] leading-tight opacity-90 truncate">
+        <div className="text-[10px] leading-tight opacity-90 truncate inline-flex items-center gap-1">
           {selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' : 'TUT'} {selectedCourse.selectedSection.sectionId}
+          {selectedCourse.locked && (
+            <Lock className="w-3 h-3 opacity-80" aria-label="Locked" />
+          )}
         </div>
       </div>
     </div>

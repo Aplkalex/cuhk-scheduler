@@ -825,10 +825,13 @@ export function TimetableGrid({
             {/* Mobile: left-aligned compact labels. If very narrow, hide course code and show section only. */}
             <div className="sm:hidden flex flex-col leading-tight min-w-0 text-left">
               {isCompactWidth ? (
-                <span className="text-[8px] font-semibold whitespace-nowrap tracking-[-0.02em]">
+                <span className="text-[8px] font-semibold whitespace-nowrap tracking-[-0.02em] inline-flex items-center gap-1">
                   {(selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' :
                     selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' :
                     selectedCourse.selectedSection.sectionType)} {selectedCourse.selectedSection.sectionId}
+                  {selectedCourse.locked && (
+                    <Lock className="w-2.5 h-2.5 opacity-80" aria-label="Locked" />
+                  )}
                 </span>
               ) : (
                 <>
@@ -848,11 +851,14 @@ export function TimetableGrid({
                       </span>
                     );
                   })()}
-                  <span className="text-[8.5px] font-semibold whitespace-nowrap tracking-[-0.01em]">
-                    {(selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' :
-                      selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' :
-                      selectedCourse.selectedSection.sectionType)} {selectedCourse.selectedSection.sectionId}
-                  </span>
+                <span className="text-[8.5px] font-semibold whitespace-nowrap tracking-[-0.01em] inline-flex items-center gap-1">
+                  {(selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' :
+                    selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' :
+                    selectedCourse.selectedSection.sectionType)} {selectedCourse.selectedSection.sectionId}
+                  {selectedCourse.locked && (
+                    <Lock className="w-2.5 h-2.5 opacity-80" aria-label="Locked" />
+                  )}
+                </span>
                 </>
               )}
             </div>
@@ -864,10 +870,13 @@ export function TimetableGrid({
                 <span className="text-xs font-extrabold leading-tight whitespace-nowrap truncate">
                   {selectedCourse.course.courseCode}
                 </span>
-                <span className="text-[11px] font-semibold opacity-95 ml-1 leading-tight whitespace-nowrap truncate">
+                <span className="text-[11px] font-semibold opacity-95 ml-1 leading-tight whitespace-nowrap truncate inline-flex items-center gap-1">
                   {selectedCourse.selectedSection.sectionType === 'Lecture' ? 'LEC' :
                   selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' :
                   selectedCourse.selectedSection.sectionType} {selectedCourse.selectedSection.sectionId}
+                  {selectedCourse.locked && (
+                    <Lock className="w-3 h-3 opacity-80" aria-label="Locked" />
+                  )}
                 </span>
               </div>
               {!isCompactBlock && (
