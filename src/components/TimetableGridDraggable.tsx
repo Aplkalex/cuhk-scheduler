@@ -69,30 +69,31 @@ function DraggableCourseBlock({
     <div
       ref={setNodeRef}
       className={cn(
-        'absolute left-1 right-1 rounded-xl cursor-grab active:cursor-grabbing group overflow-hidden border',
+        'absolute rounded-[7px] cursor-grab active:cursor-grabbing group overflow-hidden border',
         'timetable-block-enter',
         'hover:scale-[1.02]',
         'text-white flex flex-col',
         'px-1.5 py-1',
-        isFull && 'border-2 border-red-500 dark:border-red-400',
-        hasConflict && 'conflict-pattern border-2 border-yellow-500 dark:border-yellow-400',
+        hasConflict && 'conflict-pattern',
         (isDragging || isDraggedSection) && 'opacity-30 scale-95'
       )}
       style={{
         ...style,
-        // Slightly stronger subtle glow; keep inline to avoid utility reset
-        boxShadow: '0 16px 34px -22px rgba(99,102,241,0.40), 0 7px 16px -12px rgba(99,102,241,0.30)',
+        borderRadius: '7px',
+        borderWidth: isFull || hasConflict || selectedCourse.locked ? 2 : 1,
+        borderColor: selectedCourse.locked
+          ? 'rgba(255,255,255,0.95)'
+          : isFull
+            ? 'rgba(225, 29, 72, 0.94)'
+            : hasConflict
+              ? 'rgba(234, 179, 8, 0.95)'
+              : style.borderColor,
+        boxShadow: 'none',
         transition: isDragging ? 'none' : 'transform 0.25s ease, box-shadow 0.25s ease',
       }}
       {...attributes}
       {...listeners}
     >
-      {/* Soft highlight overlays inside rounded clip (~68%) */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(120%_100%_at_0%_0%,rgba(255,255,255,0.18),transparent_60%)] opacity-[0.68]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.12),rgba(255,255,255,0.06)_14%,transparent_40%)] mix-blend-soft-light opacity-[0.68]" />
-      </div>
-
       {/* Delete button */}
       {onRemove && !selectedCourse.locked && (
         <button
@@ -147,10 +148,11 @@ function DraggableCourseBlock({
           const endMinutes = timeToMinutes(time.endTime);
           const durationMinutes = endMinutes - startMinutes;
           const blockHeightPx = (durationMinutes / 60) * TIMETABLE_CONFIG.slotHeight;
-          const isTiny = blockHeightPx < 44;
-          const isMicro = blockHeightPx < 34;
+          const isTiny = blockHeightPx < 48;
+          const isMicro = blockHeightPx < 36;
           const firstFs = isMicro ? 9 : isTiny ? 10.5 : 12;
           const secondFs = isMicro ? 7.5 : isTiny ? 9 : 10;
+          const inlineBadges = isTiny || isMicro;
           const abbr = selectedCourse.selectedSection.sectionType === 'Lecture'
             ? 'LEC'
             : (selectedCourse.selectedSection.sectionType === 'Tutorial' ? 'TUT' : selectedCourse.selectedSection.sectionType);
@@ -160,13 +162,27 @@ function DraggableCourseBlock({
           const second = classLabel && location ? `${classLabel} • ${location}` : (classLabel || location || 'TBA');
           return (
             <>
-              <div className="flex items-center gap-1">
+              <div className="flex items-start gap-1">
                 <div className="font-semibold leading-tight truncate flex-1" style={{ fontSize: `${firstFs}px` }} title={first}>
                   {selectedCourse.course.courseCode} <span className="opacity-90">|</span> {abbr} {selectedCourse.selectedSection.sectionId}
                 </div>
-                {isFull && (
+                {!inlineBadges && isFull && (
                   <div title="Section is full" className="flex-shrink-0">
                     <AlertCircle className="w-3 h-3 text-red-200" />
+                  </div>
+                )}
+                {inlineBadges && (hasConflict || isFull) && (
+                  <div className="flex flex-col items-end gap-0.5">
+                    {hasConflict && (
+                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900">
+                        <AlertCircle className="h-2.5 w-2.5" />
+                      </span>
+                    )}
+                    {isFull && (
+                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-400/90 text-white">
+                        <AlertCircle className="h-2.5 w-2.5" />
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

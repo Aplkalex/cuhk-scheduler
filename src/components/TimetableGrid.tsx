@@ -266,13 +266,12 @@ export function TimetableGrid({
     : 'border-gray-200/35 dark:border-white/[0.08]';
 
   const courseBlockBaseClass = cn(
-    // Stronger rounding + clip inner visuals for truly rounded edges
-    'absolute rounded-xl cursor-pointer group flex flex-col px-1.5 sm:px-2 py-1 sm:py-1.5 overflow-hidden border transition-transform duration-200 ease-out bg-clip-padding',
+    'absolute rounded-[7px] cursor-pointer group flex flex-col px-1.5 sm:px-2 py-1 sm:py-1.5 overflow-hidden border transition-transform duration-200 ease-out bg-clip-padding',
     isFrosted ? 'backdrop-blur-xl shadow-none hover:shadow-none' : 'backdrop-blur-none shadow-none hover:shadow-none'
   );
 
   const ghostBlockBaseClass = cn(
-    'absolute left-1 right-1 rounded-xl border pointer-events-auto cursor-pointer flex flex-col items-center justify-center px-1.5 py-1.5 transition-[transform,box-shadow,opacity] duration-200 ease-out',
+    'absolute left-1 right-1 rounded-[7px] border pointer-events-auto cursor-pointer flex flex-col items-center justify-center px-1.5 py-1.5 transition-[transform,box-shadow,opacity] duration-200 ease-out',
     isFrosted ? 'backdrop-blur-2xl' : 'backdrop-blur-none'
   );
 
@@ -299,10 +298,9 @@ export function TimetableGrid({
       height: `${finalHeight}px`,
       backgroundColor: isFrosted ? palette.surface : palette.surfaceActive,
       borderColor: palette.border,
-      // Slightly stronger (average) ambient glow without hard edges
-      boxShadow: isFrosted
-        ? `0 24px 48px -33px ${palette.glow}, inset 0 1px 0 rgba(255, 255, 255, 0.30), inset 0 -1px 0 rgba(15, 23, 42, 0.11)`
-        : `0 16px 34px -22px ${palette.glow}, 0 7px 16px -13px ${palette.glow}`,
+      borderRadius: '7px',
+      // No drop shadow
+      boxShadow: 'none',
       backdropFilter: isFrosted ? 'blur(22px)' : 'none',
       WebkitBackdropFilter: isFrosted ? 'blur(22px)' : 'none',
       color: palette.text,
@@ -487,9 +485,7 @@ export function TimetableGrid({
       borderStyle: 'dashed',
       borderColor: palette.borderSoft,
       backgroundColor: isOver ? palette.surfaceActive : palette.surfaceSubtle,
-      boxShadow: isOver
-        ? `0 28px 48px -30px ${palette.glow}`
-        : `0 18px 36px -32px ${palette.glow}`,
+      boxShadow: 'none',
       opacity: isOver ? 1 : 0.94,
       transition: isOver
         ? 'all 0.25s ease-out'
@@ -557,8 +553,9 @@ export function TimetableGrid({
     const endMinutes = timeToMinutes(slot.endTime);
     const durationMinutes = endMinutes - startMinutes;
     const blockHeightPx = (durationMinutes / 60) * slotHeight;
-    const isTiny = blockHeightPx < 44;
-    const isMicro = blockHeightPx < 34;
+    const isTiny = blockHeightPx < 48;
+    const isMicro = blockHeightPx < 36;
+    const useInlineBadges = isTiny || isMicro;
     const firstFs = isMicro ? 9 : isTiny ? 10.5 : 12; // px
     const secondFs = isMicro ? 7.5 : isTiny ? 9 : 10; // px
 
@@ -652,13 +649,11 @@ export function TimetableGrid({
       ? 0
       : [Boolean(conflictBadge), Boolean(fullBadge), Boolean(isDraggable)].filter(Boolean).length;
 
-    const contentPaddingClass = showVerticalIconStack
-      ? (isCompactWidth ? 'pr-6 sm:pr-7' : 'pr-4 sm:pr-6')
-      : horizontalIconCount >= 2
-        ? 'pr-8 sm:pr-12'
-        : horizontalIconCount === 1
-          ? 'pr-7 sm:pr-10'
-          : 'pr-5 sm:pr-6';
+    const contentPaddingClass = cn(
+      'pr-2 sm:pr-3',
+      (showVerticalIconStack || useInlineBadges) && 'pr-4 sm:pr-5',
+      (!showVerticalIconStack && horizontalIconCount >= 1 && !useInlineBadges) && 'pr-7 sm:pr-9'
+    );
 
     // const handleLocationClick = (event: MouseEvent<HTMLButtonElement>) => {
     //   event.stopPropagation();
@@ -731,7 +726,7 @@ export function TimetableGrid({
             : hasConflict
               ? 'rgba(234, 179, 8, 0.95)'
               : palette.border),
-          borderWidth: selectedCourse.locked ? 2 : undefined,
+          borderWidth: isFull || hasConflict || selectedCourse.locked ? '2px' : '1px',
           // Z-index logic: shorter courses appear on top when conflicting
           // Base z-index: 1 (normal), 10+ (conflicts)
           // For conflicts: z-index = 100 - duration (so 50min class = z50, 180min class = z20)
@@ -758,14 +753,6 @@ export function TimetableGrid({
         onMouseEnter={() => setIsLocalHovered(true)}
         onMouseLeave={() => setIsLocalHovered(false)}
       >
-        {/* Soft highlight overlays (stay inside rounded clip) */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          {/* Top-left sheen (~68%) */}
-          <div className="absolute inset-0 bg-[radial-gradient(120%_100%_at_0%_0%,rgba(255,255,255,0.18),transparent_60%)] opacity-[0.68]" />
-          {/* Gentle vertical soft-light for depth (~68%) */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.12),rgba(255,255,255,0.06)_14%,transparent_40%)] mix-blend-soft-light opacity-[0.68]" />
-        </div>
-
         {/* Drag handle - only show if draggable */}
         {isDraggable && (
           <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -798,7 +785,7 @@ export function TimetableGrid({
 
 	        {/* Content */}
 	        <div className={cn('flex h-full flex-col pt-0.5 pl-2', isCompactBlock ? 'justify-center' : 'justify-start')}>
-          {showVerticalIconStack ? (
+          {(isTiny || isMicro) ? null : (showVerticalIconStack ? (
             <>
               {(conflictBadge || fullBadge) && (
                 <div
@@ -840,13 +827,13 @@ export function TimetableGrid({
                 />
               )}
             </div>
-          )}
+          ))}
 
           <div className={cn('flex flex-col gap-0.5 pr-2', contentPaddingClass)}>
             {/* Compact, consistent info – always 2 lines:
                Line 1: CourseCode | LEC/TUT/LAB ID
                Line 2: #ClassNumber • Location */}
-            <div className="sm:hidden flex flex-col leading-tight min-w-0 text-left">
+            <div className="sm:hidden flex flex-col leading-snug min-w-0 text-left gap-0.5">
               {(() => {
                 const abbr = selectedCourse.selectedSection.sectionType === 'Lecture'
                   ? 'LEC'
@@ -858,11 +845,38 @@ export function TimetableGrid({
                 const second = classLabel && locationDisplay ? `${classLabel} • ${locationDisplay}` : (classLabel || locationDisplay || 'TBA');
                 return (
                   <>
-                    <span className="font-extrabold whitespace-nowrap tracking-[-0.01em] truncate" style={{ fontSize: `${firstFs}px`, lineHeight: 1.05 }} title={first}>
-                      {first}
-                      {selectedCourse.locked && <Lock className="inline-block ml-1 w-2.5 h-2.5 opacity-80 align-[-2px]" aria-label="Locked" />}
-                    </span>
-                    <span className="opacity-90 whitespace-nowrap tracking-[-0.01em] truncate" style={{ fontSize: `${secondFs}px`, lineHeight: 1.02 }} title={second}>
+                    <div className="flex items-start gap-1">
+                      <span
+                        className="font-extrabold whitespace-nowrap tracking-tight overflow-hidden text-ellipsis"
+                        style={{ fontSize: `${Math.max(firstFs, 10)}px`, lineHeight: 1.05, minHeight: '14px' }}
+                        title={first}
+                      >
+                        {first}
+                        {selectedCourse.locked && <Lock className="inline-block ml-1 w-2 h-2 opacity-80 align-[-2px]" aria-label="Locked" />}
+                      </span>
+                      {useInlineBadges && (hasConflict || isFull || isDraggable) && (
+                        <div className="flex flex-col items-end gap-0.5 shrink-0">
+                          {hasConflict && (
+                            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900">
+                              <AlertCircle className="h-2.5 w-2.5" />
+                            </span>
+                          )}
+                          {isFull && (
+                            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-400/90 text-white">
+                              <AlertCircle className="h-2.5 w-2.5" />
+                            </span>
+                          )}
+                          {isDraggable && (
+                            <RefreshCw className="h-3.5 w-3.5 opacity-80" aria-hidden />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <span
+                      className="opacity-90 whitespace-nowrap tracking-tight overflow-hidden text-ellipsis"
+                      style={{ fontSize: `${secondFs}px`, lineHeight: 1.08, minHeight: '12px' }}
+                      title={second}
+                    >
                       {second}
                     </span>
                   </>
@@ -883,14 +897,33 @@ export function TimetableGrid({
                 const second = classLabel && locationDisplay ? `${classLabel} • ${locationDisplay}` : (classLabel || locationDisplay || 'TBA');
                 return (
                   <>
-                    <div className="min-w-0" title={selectedCourse.course.courseName}>
-                      <span className="font-extrabold leading-tight whitespace-nowrap truncate" style={{ fontSize: `${firstFs}px` }}>
-                        {selectedCourse.course.courseCode}
-                      </span>
-                      <span className="font-semibold opacity-95 ml-1 leading-tight whitespace-nowrap truncate inline-flex items-center gap-1" style={{ fontSize: `${Math.max(10, firstFs - 1)}px` }}>
-                        {abbr} {selectedCourse.selectedSection.sectionId}
-                        {selectedCourse.locked && <Lock className="w-3 h-3 opacity-80 pointer-events-none" aria-label="Locked" />}
-                      </span>
+                    <div className="flex items-start justify-between gap-1 min-w-0" title={selectedCourse.course.courseName}>
+                      <div className="min-w-0 flex-1">
+                        <span className="font-extrabold leading-tight whitespace-nowrap truncate" style={{ fontSize: `${firstFs}px` }}>
+                          {selectedCourse.course.courseCode}
+                        </span>
+                        <span className="font-semibold opacity-95 ml-1 leading-tight whitespace-nowrap truncate inline-flex items-center gap-1" style={{ fontSize: `${Math.max(10, firstFs - 1)}px` }}>
+                          {abbr} {selectedCourse.selectedSection.sectionId}
+                          {selectedCourse.locked && <Lock className="w-3 h-3 opacity-80 pointer-events-none" aria-label="Locked" />}
+                        </span>
+                      </div>
+                      {useInlineBadges && (hasConflict || isFull || isDraggable) && (
+                        <div className="flex flex-col items-end gap-0.5 -mt-0.5 shrink-0">
+                          {hasConflict && (
+                            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900">
+                              <AlertCircle className="h-2.5 w-2.5" />
+                            </span>
+                          )}
+                          {isFull && (
+                            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-400/90 text-white">
+                              <AlertCircle className="h-2.5 w-2.5" />
+                            </span>
+                          )}
+                          {isDraggable && (
+                            <RefreshCw className="h-3.5 w-3.5 opacity-80" aria-hidden />
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="opacity-90 leading-tight min-w-0" style={{ fontSize: `${secondFs}px` }}>
                       <span className="truncate block" title={second}>
@@ -1077,8 +1110,21 @@ export function TimetableGrid({
                   });
                   if (ghostEntries.length === 0) return null;
 
-                  const laidOut = layoutDaySlots(
-                    ghostEntries.map((g) => ({
+                  const existingEntries = selectedCourses.flatMap((sc) =>
+                    sc.selectedSection.timeSlots
+                      .filter((slot) => slot.day === day)
+                      .map((slot) => ({
+                        key: `existing-${sc.course.courseCode}-${sc.selectedSection.sectionId}-${slot.startTime}-${slot.endTime}`,
+                        selectedCourse: sc,
+                        slot,
+                        start: timeToMinutes(slot.startTime),
+                        end: timeToMinutes(slot.endTime),
+                      }))
+                  );
+
+                  const laidOut = layoutDaySlots([
+                    ...existingEntries,
+                    ...ghostEntries.map((g) => ({
                       key: g.key,
                       selectedCourse: {
                         course: courseData,
@@ -1088,10 +1134,11 @@ export function TimetableGrid({
                       slot: g.slot,
                       start: g.start,
                       end: g.end,
-                    }))
-                  );
+                      isGhost: true,
+                    })),
+                  ]);
 
-                  return laidOut.map((entry) => {
+                  return laidOut.filter((entry: any) => entry.isGhost).map((entry) => {
                     const baseStyle = getCourseStyle(entry.slot.startTime, entry.slot.endTime, draggedCourse.color ?? DEFAULT_COURSE_COLOR);
                     const widthPercent = 100 / entry.overlapCount;
                     const styleOverride: Partial<CourseStyle> = {
