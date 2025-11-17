@@ -173,7 +173,6 @@ Follow our quick [setup guide](#-getting-started) below
 </table>
 
 </div>
----
 
 ## 🚀 Technology Stack
 
