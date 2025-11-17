@@ -8,6 +8,22 @@
 ![License](https://img.shields.io/badge/License-AGPL%20v3-427aa1?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Active-a5be00?style=for-the-badge)
 
+br/>
+
+<a href="https://queuesis.vercel.app">
+  <img src="https://img.shields.io/badge/🚀_Launch_App-6B46C1?style=for-the-badge&logoColor=white" alt="Launch App" height="50"/>
+</a>
+&nbsp;&nbsp;
+<a href="#-getting-started">
+  <img src="https://img.shields.io/badge/📖_Get_Started-4C1D95?style=for-the-badge&logoColor=white" alt="Get Started" height="50"/>
+</a>
+&nbsp;&nbsp;
+<a href="https://github.com/Aplkalex/cuhk-scheduler/issues">
+  <img src="https://img.shields.io/badge/💡_Request_Feature-7C3AED?style=for-the-badge&logoColor=white" alt="Request Feature" height="50"/>
+</a>
+
+<br/><br/>
+
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js%2016-000000?style=for-the-badge&logo=next.js&logoColor=white)
 ![React](https://img.shields.io/badge/React%2019-61DAFB?style=for-the-badge&logo=react&logoColor=black)
@@ -15,7 +31,7 @@
 ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
 ![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
 
-[Get started](https://queuesis.vercel.app) • [Report Bug](https://github.com/Aplkalex/cuhk-scheduler/issues) • [Request Feature](https://github.com/Aplkalex/cuhk-scheduler/issues)
+<!-- [Get started](https://queuesis.vercel.app) • [Report Bug](https://github.com/Aplkalex/cuhk-scheduler/issues) • [Request Feature](https://github.com/Aplkalex/cuhk-scheduler/issues) -->
 
 </div>
 
@@ -116,6 +132,39 @@ Choose from multiple optimization preferences:
   - and only considers the locked section ids for those courses.
   - Day‑Off and other preferences still apply to unlocked courses around your locks.
 
+---
+<br/>
+
+## 🚀 Getting Started
+
+<div align="center">
+
+### Choose Your Path
+
+<table>
+<tr>
+<td align="center" width="50%">
+
+### 🌐 Use Online
+**Just want to plan your schedule?**
+
+<a href="https://queuesis.vercel.app">
+  <img src="https://img.shields.io/badge/Open_Queuesis-6B46C1?style=for-the-badge&logoColor=white" alt="Open Queuesis" height="45"/>
+</a>
+
+No installation needed!
+
+</td>
+<td align="center" width="50%">
+
+### 💻 Run Locally
+**Want to develop or customize?**
+
+<a href="#-local-development">
+  <img src="https://img.shields.io/badge/Setup_Guide-4C1D95?style=for-the-badge&logoColor=white" alt="Setup Guide" height="45"/>
+</a>
+
+Follow our quick [setup guide](#-getting-started) below
 ---
 
 ## 🚀 Technology Stack
