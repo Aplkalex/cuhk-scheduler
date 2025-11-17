@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, memo, useTransition, useRef } from 'react';
+import { useState, memo, useTransition, useRef, useEffect, useMemo } from 'react';
 import type { CSSProperties, /* MouseEvent */ } from 'react';
 import { SelectedCourse, DayOfWeek, Course, Section, TimeSlot } from '@/types';
 import { TIMETABLE_CONFIG, WEEKDAYS, WEEKDAY_SHORT } from '@/lib/constants';
 import { timeToMinutes, formatTime, hasAvailableSeats } from '@/lib/schedule-utils';
 import { cn } from '@/lib/utils';
-import { X, AlertCircle, RefreshCw, GripVertical, Lock } from 'lucide-react';
+import { X, AlertCircle, RefreshCw, GripVertical, Lock, MapPin } from 'lucide-react';
 import {
   DndContext,
   DragOverlay,
@@ -157,6 +157,53 @@ type SlotLayoutOutput = SlotLayoutInput & {
   overlapCount: number;
 };
 
+// Smart text sizing based on rendered dimensions (mobile only)
+type SmartTextConfig = {
+  primary: number;
+  secondary: number;
+  tertiary: number;
+  layout: 'compact' | 'comfortable' | 'spacious';
+  abbreviate: boolean;
+  badgeSize: 'tiny' | 'small' | 'normal';
+};
+
+const calculateSmartTextSizes = (
+  width: number,
+  height: number,
+  overlapCount: number,
+  isSmallScreen: boolean
+): SmartTextConfig | null => {
+  if (!isSmallScreen) return null;
+  const paddingX = 12;
+  const paddingY = 8;
+  const iconSpace = overlapCount >= 2 ? 28 : 18;
+
+  const availableWidth = Math.max(40, width - paddingX * 2 - iconSpace);
+  const availableHeight = Math.max(26, height - paddingY * 2);
+
+  let layout: SmartTextConfig['layout'] = 'spacious';
+  if (availableHeight < 42) layout = 'compact';
+  else if (availableHeight < 70) layout = 'comfortable';
+
+  const widthFactor = Math.min(availableWidth / 120, 1.25);
+  const heightFactor = Math.min(availableHeight / 60, 1.2);
+  const sizeFactor = Math.max(0.5, Math.min(1.2, Math.min(widthFactor, heightFactor)));
+
+  const basePrimary = layout === 'compact' ? 8.6 : layout === 'comfortable' ? 10.2 : 11.8;
+  const baseSecondary = layout === 'compact' ? 7.6 : layout === 'comfortable' ? 9.0 : 10.2;
+  const baseTertiary = layout === 'compact' ? 6.8 : layout === 'comfortable' ? 8.1 : 9.5;
+
+  const primary = Math.max(7.1, Math.min(12.5, basePrimary * sizeFactor));
+  const secondary = Math.max(6.4, Math.min(11.2, baseSecondary * sizeFactor));
+  const tertiary = Math.max(5.9, Math.min(10, baseTertiary * sizeFactor));
+
+  const abbreviate = availableWidth < 95;
+  const badgeSize: SmartTextConfig['badgeSize'] =
+    layout === 'compact' ? 'tiny' : layout === 'comfortable' ? 'small' : 'normal';
+
+  return { primary, secondary, tertiary, layout, abbreviate, badgeSize };
+};
+
 const layoutDaySlots = (blocks: SlotLayoutInput[]): SlotLayoutOutput[] => {
   const sorted = [...blocks].sort((a, b) => {
     if (a.start === b.start) {
@@ -215,9 +262,10 @@ export function TimetableGrid({
   const [draggedCourse, setDraggedCourse] = useState<SelectedCourse | null>(null);
   const [, startTransition] = useTransition();
   const { startHour, endHour } = TIMETABLE_CONFIG;
-  // Compact mobile sizing: reduce per-hour height and time-column width
+  // Compact mobile sizing: adjust per-hour height and time-column width
   const isSmallScreen = typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)').matches : false;
-  const slotHeight = isSmallScreen ? 40 : TIMETABLE_CONFIG.slotHeight;
+  const baseSlotHeight = TIMETABLE_CONFIG.slotHeight;
+  const slotHeight = isSmallScreen ? baseSlotHeight * 1.35 : baseSlotHeight;
   const OVERLAP_GAP = isSmallScreen ? 6 : DEFAULT_OVERLAP_GAP;
   const isDragging = Boolean(draggedCourse);
   const prevBodyStyleRef = useRef<{ overflow?: string; touchAction?: string; overscrollBehavior?: string } | null>(null);
@@ -268,7 +316,8 @@ export function TimetableGrid({
   const courseBlockBaseClass = cn(
     'absolute rounded-[7px] cursor-pointer group flex flex-col border bg-clip-padding',
     'transition-transform duration-200 ease-out shadow-none hover:shadow-none',
-    'px-[6px] py-[4px] sm:px-2 sm:py-[5px]'
+    // Use tighter padding on narrow/overlapping pills so text fits better
+    'px-[5px] py-[3px] sm:px-2 sm:py-[5px]'
   );
 
   const ghostBlockBaseClass = cn(
@@ -543,44 +592,32 @@ export function TimetableGrid({
     style,
     slot,
     // onLocationClick,
-    isCompactWidth = false,
+    isCompactWidth: _isCompactWidth = false,
     overlapCount = 1,
   }: DraggableCourseBlockProps) {
     const [isLocalHovered, setIsLocalHovered] = useState(false);
+    const blockRef = useRef<HTMLDivElement | null>(null);
+    const [blockDimensions, setBlockDimensions] = useState<{ width: number; height: number }>({
+      width: 0,
+      height: 0,
+    });
     const uniqueId = `${selectedCourse.course.courseCode}-${selectedCourse.selectedSection.sectionId}-${blockId}`;
 
-    // Calculate duration of this time slot (shorter courses should appear on top)
+    // Calculate duration
     const startMinutes = timeToMinutes(slot.startTime);
     const endMinutes = timeToMinutes(slot.endTime);
     const durationMinutes = endMinutes - startMinutes;
     const blockHeightPx = (durationMinutes / 60) * slotHeight;
-    type DisplayMode = 'compact' | 'tight' | 'full';
-    const displayMode: DisplayMode = blockHeightPx < 50 ? 'compact' : blockHeightPx < 80 ? 'tight' : 'full';
-    const inlineBadges = displayMode === 'compact' || isCompactWidth || overlapCount >= 2;
-    const firstFs =
-      displayMode === 'full'
-        ? 11
-        : displayMode === 'tight'
-          ? 10.5
-          : 9.5;
-    const secondFs =
-      displayMode === 'full'
-        ? 9
-        : displayMode === 'tight'
-          ? 8.5
-          : 8;
 
-    // Check if there are alternatives to swap to
+    // Check if there are alternatives to swap to (needed for drag handles)
     const courseData = availableCourses.find((c) => c.courseCode === selectedCourse.course.courseCode);
     let hasAlternatives = false;
 
     if (courseData && enableDragDrop) {
       if (selectedCourse.selectedSection.sectionType === 'Lecture') {
-        // Count lectures - need at least 2 to enable drag
         const lectureCount = courseData.sections.filter((section) => section.sectionType === 'Lecture').length;
         hasAlternatives = lectureCount > 1;
       } else if (selectedCourse.selectedSection.sectionType === 'Tutorial') {
-        // Count tutorials with same parentLecture OR no parentLecture (universal) - need at least 2 to enable drag
         const tutorialCount = courseData.sections.filter(
           (section) =>
             section.sectionType === 'Tutorial' &&
@@ -589,7 +626,6 @@ export function TimetableGrid({
         ).length;
         hasAlternatives = tutorialCount > 1;
       } else if (selectedCourse.selectedSection.sectionType === 'Lab') {
-        // Count labs with same parentLecture OR no parentLecture (universal) - need at least 2 to enable drag
         const labCount = courseData.sections.filter(
           (section) =>
             section.sectionType === 'Lab' &&
@@ -608,88 +644,126 @@ export function TimetableGrid({
       disabled: !isDraggable,
     });
 
+    // Measure actual dimensions (mobile only). Skip while dragging to avoid layout thrash.
+    useEffect(() => {
+      if (!isSmallScreen) return;
+      const node = blockRef.current;
+      if (!node) return;
+
+      const update = () => {
+        if (!blockRef.current || isDragging) return;
+        const rect = blockRef.current.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          setBlockDimensions({ width: rect.width, height: rect.height });
+        }
+      };
+
+      const observer = new ResizeObserver(update);
+      observer.observe(node);
+      // Run one measurement after mount
+      update();
+
+      return () => {
+        observer.disconnect();
+      };
+    }, [isSmallScreen, isDragging]);
+
+    // Calculate smart text sizes
+    const smartText = useMemo(() => {
+      const measuredWidth = blockDimensions.width;
+      const measuredHeight = blockDimensions.height;
+      const styleWidth =
+        typeof style.width === 'string'
+          ? Number.parseFloat(style.width)
+          : typeof style.width === 'number'
+            ? style.width
+            : undefined;
+      const estimatedWidth = measuredWidth > 0 ? measuredWidth : Math.max(styleWidth ?? 0, 170);
+      const estimatedHeight = measuredHeight > 0 ? measuredHeight : blockHeightPx;
+      return calculateSmartTextSizes(estimatedWidth, estimatedHeight, overlapCount, isSmallScreen);
+    }, [blockDimensions.width, blockDimensions.height, blockHeightPx, overlapCount, isSmallScreen, style.width]);
+
+    // Determine display mode and font sizes
+    type DisplayMode = 'compact' | 'tight' | 'full';
+    let displayMode: DisplayMode;
+    let firstFs: number;
+    let secondFs: number;
+
+    if (isSmallScreen && smartText) {
+      displayMode = smartText.layout === 'compact' ? 'compact' : smartText.layout === 'comfortable' ? 'tight' : 'full';
+      firstFs = Math.max(10, Math.min(12, smartText.primary));
+      secondFs = Math.max(9, Math.min(11, smartText.secondary));
+    } else {
+      displayMode = blockHeightPx < 50 ? 'compact' : blockHeightPx < 80 ? 'tight' : 'full';
+      firstFs = displayMode === 'full' ? 11 : displayMode === 'tight' ? 10.5 : 9.5;
+      secondFs = displayMode === 'full' ? 9 : displayMode === 'tight' ? 8.5 : 8;
+    }
+
+    const blockPaddingY =
+      displayMode === 'compact' ? (isSmallScreen ? 2 : 3) : displayMode === 'tight' ? 4 : 6;
+    const lineHeights = {
+      primary: displayMode === 'compact' ? 1.06 : displayMode === 'tight' ? 1.14 : 1.22,
+      secondary: displayMode === 'compact' ? 1.05 : displayMode === 'tight' ? 1.1 : 1.18,
+    };
+
+    const shouldAbbreviate = isSmallScreen && smartText?.abbreviate;
+    const abbr =
+      selectedCourse.selectedSection.sectionType === 'Lecture'
+        ? 'LEC'
+        : selectedCourse.selectedSection.sectionType === 'Tutorial'
+          ? 'TUT'
+          : selectedCourse.selectedSection.sectionType;
+    const sectionId = selectedCourse.selectedSection.sectionId;
+    const classNumber = selectedCourse.selectedSection.classNumber;
+
+    const isDesktop = !isSmallScreen;
+
     const { setNodeRef: setDropRef, isOver } = useDroppable({
       id: `drop-${uniqueId}`,
       data: { course: selectedCourse },
       disabled: !isDraggable || selectedCourse.locked === true,
     });
 
-  const palette = buildGlassPalette(selectedCourse.color);
-  const isFull = !hasAvailableSeats(selectedCourse.selectedSection);
-  const hasConflict = conflictingCourses.includes(selectedCourse.course.courseCode);
-  const locationLabel = slot.location ?? selectedCourse.selectedSection.timeSlots.find((timeSlot) => timeSlot.location)?.location ?? null;
-  const locationDisplay = locationLabel ?? 'Location TBA';
-  // const canClickLocation = Boolean(locationLabel && onLocationClick);
+    const palette = buildGlassPalette(selectedCourse.color);
+    const textColor = palette.text;
+    const isFull = !hasAvailableSeats(selectedCourse.selectedSection);
+    const hasConflict = conflictingCourses.includes(selectedCourse.course.courseCode);
+    const locationLabel = slot.location ?? selectedCourse.selectedSection.timeSlots.find((timeSlot) => timeSlot.location)?.location ?? null;
+    const locationDisplay = locationLabel ?? 'TBA';
+    const desktopLine1 = `${selectedCourse.course.courseCode.toUpperCase()} | ${abbr} ${sectionId}`;
+    const desktopLocationLabel = locationDisplay;
+    const desktopLine2Title = `${classNumber ? `#${classNumber}` : ''}${classNumber ? ' • ' : ''}${desktopLocationLabel}`;
 
-    const conflictBadge = hasConflict ? (
-      <span
-        title="Schedule conflict"
-        className="flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900"
-      >
-        <AlertCircle className="h-2.5 w-2.5" />
-      </span>
-    ) : null;
-
-    const fullBadge = isFull ? (
-      <span
-        title="Section is full"
-        className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-400/90 text-white"
-      >
-        <AlertCircle className="h-2.5 w-2.5" />
-      </span>
-    ) : null;
-
-    const stackedBadges = (inlineBadges && (conflictBadge || fullBadge || isDraggable))
-      ? (
-        <div
-          className={cn(
-            'absolute pointer-events-none',
-            displayMode === 'compact'
-              ? 'right-1 top-0 flex items-center gap-1 h-[16px]'
-              : 'right-1 top-1 flex flex-col items-end gap-0.5'
-          )}
-        >
-          {conflictBadge}
-          {fullBadge}
-          {isDraggable && (
-            <RefreshCw className="h-3 w-3 opacity-80" aria-hidden focusable={false} />
-          )}
-        </div>
-      )
-      : null;
-
-    const trailingBadges = (!inlineBadges && (conflictBadge || fullBadge || isDraggable))
-      ? (
-        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-          {conflictBadge}
-          {fullBadge}
-          {isDraggable && (
-            <RefreshCw className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-80 transition-transform group-hover:scale-110 group-hover:opacity-100" aria-hidden focusable={false} />
-          )}
-        </div>
-      )
-      : null;
-
-    // const handleLocationClick = (event: MouseEvent<HTMLButtonElement>) => {
-    //   event.stopPropagation();
-    //   if (canClickLocation && locationLabel && onLocationClick) {
-    //     onLocationClick(locationLabel);
-    //   }
-    // };
+    // Prepare text content
+    const measuredWidth = blockDimensions.width || undefined;
+    const estimatedWidth =
+      measuredWidth ??
+      (typeof style.width === 'string'
+        ? Number.parseFloat(style.width)
+        : typeof style.width === 'number'
+          ? style.width
+          : 170);
+    const courseCode = (() => {
+      const raw = selectedCourse.course.courseCode;
+      if (!shouldAbbreviate) return raw;
+      if (estimatedWidth < 70) return raw.slice(0, 3);
+      if (estimatedWidth < 90) return raw.slice(0, 5);
+      return raw;
+    })();
 
     // Check if this is a valid drop target
-    const isValidDropTarget = isOver && draggedCourse && draggedCourse !== selectedCourse && !selectedCourse.locked && (() => {
+    const isValidDropTarget = isOver && draggedCourse && !selectedCourse.locked && (() => {
+      if (draggedCourse === selectedCourse) {
+        // Allow dropping back onto itself to end the drag gracefully.
+        return true;
+      }
       const draggedSection = draggedCourse.selectedSection;
       const targetSection = selectedCourse.selectedSection;
 
-      // Allow lecture to lecture swap
       if (draggedSection.sectionType === 'Lecture' && targetSection.sectionType === 'Lecture') {
         return true;
       }
 
-      // Allow non-lecture same-type swaps within the same course.
-      // - Tutorials: require same parentLecture
-      // - Labs (and other non-lecture types): require same type, and if parentLecture exists, it must match
       if (draggedSection.sectionType !== 'Lecture' && targetSection.sectionType === draggedSection.sectionType) {
         if (draggedCourse.course.courseCode !== selectedCourse.course.courseCode) {
           return false;
@@ -708,136 +782,164 @@ export function TimetableGrid({
         ref={(node) => {
           setNodeRef(node);
           setDropRef(node);
+          blockRef.current = node;
         }}
         {...listeners}
         {...attributes}
         className={cn(
           courseBlockBaseClass,
           'hover:scale-[1.02]',
-          // Use border color to indicate state; avoid outer ring which can look square against rounded corners
           isFull && 'border-2 border-red-500/90 dark:border-red-400/90',
           hasConflict && !isFull && 'border-2 border-yellow-500/90 dark:border-yellow-400/90',
-          isDragging && 'opacity-0',
-          // Avoid outer ring; keep subtle scale/shadow only
+          isDragging && 'opacity-0 pointer-events-none',
           isValidDropTarget && 'scale-105 shadow-lg animate-pulse',
           isDraggable && 'cursor-grab active:cursor-grabbing',
           !isDraggable && enableDragDrop && 'cursor-default',
         )}
         style={{
           ...style,
-          // Critical for mobile Safari/Chrome: ensure drags capture move events and don't scroll
           touchAction: 'none',
+          paddingTop: `${blockPaddingY}px`,
+          paddingBottom: `${blockPaddingY}px`,
           backfaceVisibility: 'hidden',
           WebkitBackfaceVisibility: 'hidden',
           contain: 'layout paint',
           backgroundImage: hasConflict
             ? `repeating-linear-gradient(135deg, rgba(250, 204, 21, 0.28) 0px, rgba(250, 204, 21, 0.08) 12px, transparent 12px, transparent 24px)`
             : undefined,
-          backgroundSize: hasConflict ? 'auto' : undefined,
           borderColor: selectedCourse.locked
             ? 'rgba(255,255,255,0.95)'
-            : (isFull
-            ? 'rgba(225, 29, 72, 0.94)'
-            : hasConflict
-              ? 'rgba(234, 179, 8, 0.95)'
-              : palette.border),
+            : isFull
+              ? 'rgba(225, 29, 72, 0.94)'
+              : hasConflict
+                ? 'rgba(234, 179, 8, 0.95)'
+                : palette.border,
           borderWidth: isFull || hasConflict || selectedCourse.locked ? '2px' : '1px',
-          // Z-index logic: shorter courses appear on top when conflicting
-          // Base z-index: 1 (normal), 10+ (conflicts)
-          // For conflicts: z-index = 100 - duration (so 50min class = z50, 180min class = z20)
-          // This ensures shorter courses are always visible on top
-          // When hovered, bring to the very top (z-index 200)
           zIndex:
             isLocalHovered && hasConflict
               ? 200
               : hasConflict
                 ? Math.max(10, 100 - Math.floor(durationMinutes / 10))
                 : 1,
-          // More transparency for conflicts so overlapping courses are clearly visible
-          // Full opacity when hovered
           opacity: hasConflict ? (isLocalHovered ? 1 : 0.85) : 1,
           filter: selectedCourse.locked
             ? 'grayscale(0.2) saturate(0.65) brightness(0.98)'
-            : (hasConflict ? 'saturate(1.22) brightness(0.98)' : 'saturate(1.05)'),
-          // Always use smooth transitions for position changes
-          transition: isDragging
-            ? 'none'
-            : 'transform 0.18s ease, box-shadow 0.18s ease, top 0.28s ease, height 0.28s ease, left 0.28s ease, opacity 0.2s ease',
+            : hasConflict
+              ? 'saturate(1.22) brightness(0.98)'
+              : 'saturate(1.05)',
+            transition: isDragging
+              ? 'none'
+              : 'transform 0.18s ease, box-shadow 0.18s ease, top 0.28s ease, height 0.28s ease, left 0.28s ease, opacity 0.2s ease',
           willChange: 'transform, box-shadow, top, height, left',
         }}
         onMouseEnter={() => setIsLocalHovered(true)}
         onMouseLeave={() => setIsLocalHovered(false)}
       >
-        {/* Drag handle - only show if draggable */}
+        {isDragging && (
+          <div
+            className="absolute inset-0 pointer-events-none rounded-[7px] border border-dashed"
+            style={{
+              ...style,
+              borderColor: palette.borderSoft,
+              backgroundColor: 'transparent',
+              opacity: 0.35,
+              transition: 'none',
+              zIndex: 0,
+            }}
+          />
+        )}
+        {/* Drag handle */}
         {isDraggable && (
           <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none">
             <GripVertical className="w-3 h-3 text-white" />
           </div>
         )}
 
-        {/* Delete button */}
-        {onRemoveCourse && (
-          <button
-            onPointerDown={(e) => {
-              e.stopPropagation();
-            }}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemoveCourse(selectedCourse);
-            }}
-            className={cn(
-              // keep legacy button invisible (we render a later overlay below)
-              'hidden'
-            )}
-            title="Remove course"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-
+        {/* Content */}
         <div
           className={cn(
-            'relative flex h-full pl-[4px] pr-[10px]',
-            displayMode === 'full' && 'flex-col justify-between gap-[3px] py-[2px]',
-            displayMode === 'tight' && 'flex-col justify-center gap-[2px] py-[4px]',
-            displayMode === 'compact' && 'flex-col justify-start gap-[1px] pt-0 pb-[0.2px]'
+            'flex h-full flex-col pl-1.5 pr-3',
+            displayMode === 'compact' ? 'justify-center gap-0.5' : 'justify-center gap-1',
           )}
-          style={{ minHeight: displayMode === 'full' ? '42px' : displayMode === 'tight' ? '36px' : '30px', overflow: 'visible' }}
         >
-          {(() => {
-            const abbr = selectedCourse.selectedSection.sectionType === 'Lecture'
-              ? 'LEC'
-              : selectedCourse.selectedSection.sectionType === 'Tutorial'
-                ? 'TUT'
-                : selectedCourse.selectedSection.sectionType;
-            const first = `${selectedCourse.course.courseCode} | ${abbr} ${selectedCourse.selectedSection.sectionId}`;
-            const classLabel = selectedCourse.selectedSection.classNumber ? `#${selectedCourse.selectedSection.classNumber}` : '';
-            const second = classLabel && locationDisplay ? `${classLabel} • ${locationDisplay}` : (classLabel || locationDisplay || 'TBA');
-            return (
-              <>
-          <div className="flex items-start gap-[3px] leading-[1.05]">
-            <div
-              className="font-semibold truncate flex-1"
-              style={{ fontSize: `${firstFs}px` }}
-              title={first}
-            >
-              {selectedCourse.course.courseCode} <span className="opacity-90">|</span> {abbr} {selectedCourse.selectedSection.sectionId}
-              {selectedCourse.locked && (
-                <Lock className="inline-block ml-1 w-2.5 h-2.5 opacity-80 align-[-2px]" aria-label="Locked" />
-              )}
+          {isDesktop ? (
+            <div className="flex flex-col gap-0.5">
+              <div
+                className="font-semibold break-words"
+                style={{ fontSize: `${firstFs}px`, color: textColor, lineHeight: lineHeights.primary }}
+                title={desktopLine1}
+              >
+                {desktopLine1}
+                {selectedCourse.locked && (
+                  <Lock className="inline-block ml-1 w-2.5 h-2.5 opacity-80" />
+                )}
+              </div>
+              <div
+                className="opacity-90 break-words flex flex-wrap items-center gap-x-2 gap-y-0.5"
+                style={{ fontSize: `${secondFs}px`, color: textColor, lineHeight: lineHeights.secondary }}
+                title={desktopLine2Title.trim()}
+              >
+                {classNumber && (
+                  <span className="font-medium">{`#${classNumber}`}</span>
+                )}
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="w-2.5 h-2.5 text-white/90" />
+                  <span>{desktopLocationLabel}</span>
+                </span>
+              </div>
             </div>
-            {!inlineBadges && trailingBadges}
-          </div>
-          {inlineBadges && stackedBadges}
-          <div className="leading-[1.05] opacity-90 truncate" style={{ fontSize: `${secondFs}px` }} title={second}>
-            {second}
-          </div>
-          </>
-            );
-          })()}
+          ) : (
+            <>
+              <div className="flex flex-col gap-0.5">
+                {/* Line 1: Course Code */}
+                <div
+                  className="font-semibold break-words"
+                  style={{ fontSize: `${firstFs}px`, color: textColor, lineHeight: lineHeights.primary }}
+                  title={selectedCourse.course.courseCode}
+                >
+                  {courseCode}
+                  {selectedCourse.locked && (
+                    <Lock className="inline-block ml-1 w-2.5 h-2.5 opacity-80" />
+                  )}
+                </div>
+
+                {/* Line 2: Section label */}
+                <div
+                  className="opacity-90 break-words"
+                  style={{ fontSize: `${secondFs}px`, color: textColor, lineHeight: lineHeights.secondary }}
+                  title={`${abbr} ${sectionId}`}
+                >
+                  {abbr} {sectionId}
+                </div>
+              </div>
+
+              {/* Line 3: Class Number + Location */}
+              <div
+                className="opacity-90 break-words"
+                style={{ fontSize: `${secondFs}px`, color: textColor, lineHeight: lineHeights.secondary }}
+                title={classNumber ? `#${classNumber} • ${locationDisplay}` : locationDisplay}
+              >
+                {classNumber ? `#${classNumber} • ` : ''}{locationDisplay}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Badges in top-right */}
+        <div className="absolute top-1 right-1 flex flex-col items-end gap-0.5 pointer-events-none">
+          {hasConflict && (
+            <span className="flex h-3 w-3 items-center justify-center rounded-full bg-yellow-300/90 text-slate-900">
+              <AlertCircle className="h-2 w-2" />
+            </span>
+          )}
+          {isFull && (
+            <span className="flex h-3 w-3 items-center justify-center rounded-full bg-rose-400/90 text-white">
+              <AlertCircle className="h-2 w-2" />
+            </span>
+          )}
+          {!hasConflict && !isFull && isDraggable && (
+            <RefreshCw className="h-3 w-3 opacity-70 group-hover:opacity-100 transition-opacity" />
+          )}
         </div>
       </div>
     );
@@ -967,25 +1069,23 @@ export function TimetableGrid({
                   let alternativeSections: Section[] = [];
 
                   if (draggedCourse.selectedSection.sectionType === 'Lecture') {
-                    // Show alternative lectures
+                    // Show all lectures (including current) so user can drop back or swap
                     alternativeSections = courseData.sections.filter(
-                      (section) => section.sectionType === 'Lecture' && section.sectionId !== draggedCourse.selectedSection.sectionId
+                      (section) => section.sectionType === 'Lecture'
                     );
                   } else if (draggedCourse.selectedSection.sectionType === 'Tutorial') {
-                    // Show alternative tutorials with same parent lecture
+                    // Show all tutorials with same parent lecture (including current)
                     alternativeSections = courseData.sections.filter(
                       (section) =>
                         section.sectionType === 'Tutorial' &&
-                        section.parentLecture === draggedCourse.selectedSection.parentLecture &&
-                        section.sectionId !== draggedCourse.selectedSection.sectionId
+                        section.parentLecture === draggedCourse.selectedSection.parentLecture
                     );
                   } else if (draggedCourse.selectedSection.sectionType === 'Lab') {
-                    // Show alternative labs with same parent lecture
+                    // Show all labs with same parent lecture (including current)
                     alternativeSections = courseData.sections.filter(
                       (section) =>
                         section.sectionType === 'Lab' &&
-                        section.parentLecture === draggedCourse.selectedSection.parentLecture &&
-                        section.sectionId !== draggedCourse.selectedSection.sectionId
+                        section.parentLecture === draggedCourse.selectedSection.parentLecture
                     );
                   }
 
@@ -1013,17 +1113,19 @@ export function TimetableGrid({
                   });
                   if (ghostEntries.length === 0) return null;
 
-                  const existingEntries = selectedCourses.flatMap((sc) =>
-                    sc.selectedSection.timeSlots
-                      .filter((slot) => slot.day === day)
-                      .map((slot) => ({
-                        key: `existing-${sc.course.courseCode}-${sc.selectedSection.sectionId}-${slot.startTime}-${slot.endTime}`,
-                        selectedCourse: sc,
-                        slot,
-                        start: timeToMinutes(slot.startTime),
-                        end: timeToMinutes(slot.endTime),
-                      }))
-                  );
+                  const existingEntries = selectedCourses
+                    .filter((sc) => sc !== draggedCourse)
+                    .flatMap((sc) =>
+                      sc.selectedSection.timeSlots
+                        .filter((slot) => slot.day === day)
+                        .map((slot) => ({
+                          key: `existing-${sc.course.courseCode}-${sc.selectedSection.sectionId}-${slot.startTime}-${slot.endTime}`,
+                          selectedCourse: sc,
+                          slot,
+                          start: timeToMinutes(slot.startTime),
+                          end: timeToMinutes(slot.endTime),
+                        }))
+                    );
 
                   const laidOut = layoutDaySlots([
                     ...existingEntries,
