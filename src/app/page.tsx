@@ -14,7 +14,7 @@ import { generateCourseColor, calculateTotalCredits, detectConflicts, hasAvailab
 import { TIMETABLE_CONFIG, WEEKDAY_SHORT } from '@/lib/constants';
 import { generateSchedules, type GeneratedSchedule } from '@/lib/schedule-generator';
 import { DISCLAIMER } from '@/lib/constants';
-import { Calendar, Book, AlertCircle, AlertTriangle, Info, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, Download, Upload, Menu, RotateCcw, MapPin, /* Coffee, Check, */ FlaskConical, Lock, Unlock, Github } from 'lucide-react';
+import { Calendar, Book, List, AlertCircle, AlertTriangle, Info, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, Download, Upload, Menu, RotateCcw, MapPin, /* Coffee, Check, */ FlaskConical, Lock, Unlock, Github } from 'lucide-react';
 import TermSelector from '@/components/TermSelector';
 import ConflictToast from '@/components/ConflictToast';
 import FullSectionWarningToast, { type FullSectionWarningData } from '@/components/FullSectionWarningToast';
@@ -2356,13 +2356,13 @@ export default function Home() {
               <button
                 type="button"
                 onClick={openSelectedCoursesSheet}
-                className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-md active:scale-[0.97] transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full active:scale-[0.97] transition shadow-sm"
                 title="View selected courses"
               >
-                <Book className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
-                  {selectedCourseCodes.length} {selectedCourseCodes.length === 1 ? 'course' : 'courses'}
-                </span>
+                <div className="flex items-center gap-1 text-purple-700 dark:text-purple-300 text-[11px] font-bold leading-none">
+                  <List className="w-3 h-3" />
+                  {selectedCourseCodes.length}
+                </div>
               </button>
 
               <button
@@ -2430,19 +2430,22 @@ export default function Home() {
               <button
                 type="button"
                 onClick={openSelectedCoursesSheet}
-                className="flex items-center gap-1 px-2 py-2 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/50 dark:bg-purple-900/40 dark:text-purple-200"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/50 dark:bg-purple-900/40 dark:text-purple-200 shadow-sm"
                 title="View selected courses"
               >
-                <Book className="w-3.5 h-3.5" />
-                <span className="text-xs font-bold">{selectedCourses.length} {selectedCourses.length === 1 ? 'course' : 'courses'}</span>
+                <div className="flex items-center gap-1 text-[11px] font-bold leading-none">
+                  <List className="w-3 h-3" />
+                  {selectedCourses.length}
+                </div>
               </button>
               <button
                 type="button"
                 onClick={() => setMobileView('courses')}
-                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-[#1e1e1e]/70 text-xs font-semibold text-gray-700 dark:text-gray-200"
+                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-[#1e1e1e]/70 text-xs font-semibold text-gray-700 dark:text-gray-200 flex items-center justify-center"
                 title="Back to courses"
+                aria-label="Back to courses"
               >
-                Courses
+                ←
               </button>
               <div className="flex items-center gap-1">
                 {generatedSchedules.length > 1 && (

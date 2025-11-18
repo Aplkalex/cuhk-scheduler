@@ -987,7 +987,11 @@ export function TimetableGrid({
               </div>
 
               <div
-                className="opacity-90 font-medium tracking-[0.08em] truncate max-w-full"
+                className={cn(
+                  'opacity-90 font-medium max-w-full',
+                  isSmallScreen ? 'tracking-[0.04em]' : 'tracking-[0.08em]',
+                  !isSmallScreen && 'truncate'
+                )}
                 style={{
                   fontSize: `${secondFs}px`,
                   color: textColor,
