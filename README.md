@@ -176,6 +176,8 @@ Follow our quick [setup guide](#-getting-started) below
 
 ## 🚀 Technology Stack
 
+<div align="center">
+
 <table>
 <tr>
 <td align="center" valign="top" width="50%">
@@ -191,7 +193,7 @@ Follow our quick [setup guide](#-getting-started) below
 - **Deployment**: Vercel
 
 </td>
-<td valign="top" width="50%">
+<td align="center" valign="top" width="50%">
 
 ### Backend & Data
 - **Runtime**: Node.js (Vercel)
@@ -205,6 +207,8 @@ Follow our quick [setup guide](#-getting-started) below
 </td>
 </tr>
 </table>
+
+</div>
 
 ### Architecture Highlights
 
