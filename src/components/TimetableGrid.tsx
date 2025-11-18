@@ -268,6 +268,7 @@ export function TimetableGrid({
   const slotHeight = isSmallScreen ? baseSlotHeight * 1.35 : baseSlotHeight;
   const OVERLAP_GAP = isSmallScreen ? 6 : DEFAULT_OVERLAP_GAP;
   const isDragging = Boolean(draggedCourse);
+  const blockSizeCacheRef = useRef<Map<string, { width: number; height: number }>>(new Map());
   const prevBodyStyleRef = useRef<{ overflow?: string; touchAction?: string; overscrollBehavior?: string } | null>(null);
   // Sensors must be created unconditionally to keep hook order stable
   const sensors = useSensors(
@@ -597,23 +598,29 @@ export function TimetableGrid({
   }: DraggableCourseBlockProps) {
     const [isLocalHovered, setIsLocalHovered] = useState(false);
     const blockRef = useRef<HTMLDivElement | null>(null);
-    const [blockDimensions, setBlockDimensions] = useState<{ width: number; height: number }>({
-      width: 0,
-      height: 0,
-    });
     const uniqueId = `${selectedCourse.course.courseCode}-${selectedCourse.selectedSection.sectionId}-${blockId}`;
+    const cachedDims = blockSizeCacheRef.current.get(uniqueId);
+    const [blockDimensions, setBlockDimensions] = useState<{ width: number; height: number }>(() =>
+      cachedDims ?? { width: 0, height: 0 }
+    );
 
     // Calculate duration
     const startMinutes = timeToMinutes(slot.startTime);
     const endMinutes = timeToMinutes(slot.endTime);
     const durationMinutes = endMinutes - startMinutes;
     const blockHeightPx = (durationMinutes / 60) * slotHeight;
-    const styleWidth =
-      typeof style.width === 'string'
-        ? Number.parseFloat(style.width)
-        : typeof style.width === 'number'
-          ? style.width
-          : undefined;
+    const styleWidth = (() => {
+      if (typeof style.width === 'number') return style.width;
+      if (typeof style.width === 'string') {
+        const trimmed = style.width.trim();
+        if (trimmed.startsWith('calc(') || trimmed.includes('%') || /[a-z]/i.test(trimmed.replace(/px|rem|em|vh|vw/g, ''))) {
+          return undefined;
+        }
+        const parsed = Number.parseFloat(trimmed);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      }
+      return undefined;
+    })();
     const fallbackWidth = isSmallScreen ? 90 : 170;
     const estimatedBlockWidth =
       blockDimensions.width > 0 ? blockDimensions.width : Math.max(styleWidth ?? 0, fallbackWidth);
@@ -664,7 +671,9 @@ export function TimetableGrid({
         if (!blockRef.current || isDragging) return;
         const rect = blockRef.current.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
-          setBlockDimensions({ width: rect.width, height: rect.height });
+          const nextDims = { width: rect.width, height: rect.height };
+          setBlockDimensions(nextDims);
+          blockSizeCacheRef.current.set(uniqueId, nextDims);
         }
       };
 
@@ -748,7 +757,6 @@ export function TimetableGrid({
       lineHeights.secondary = Number((lineHeights.secondary * 0.95).toFixed(3));
     }
 
-    const shouldAbbreviate = isSmallScreen && smartText?.abbreviate;
     const abbr =
       selectedCourse.selectedSection.sectionType === 'Lecture'
         ? 'LEC'
@@ -779,19 +787,43 @@ export function TimetableGrid({
     const hasConflict = conflictingCourses.includes(selectedCourse.course.courseCode);
     const locationLabel = slot.location ?? selectedCourse.selectedSection.timeSlots.find((timeSlot) => timeSlot.location)?.location ?? null;
     const locationDisplay = locationLabel ?? 'TBA';
+    const statusHighlightColor = selectedCourse.locked
+      ? 'rgba(255,255,255,0.95)'
+      : isFull
+        ? 'rgba(225, 29, 72, 0.94)'
+        : hasConflict
+          ? 'rgba(234, 179, 8, 0.95)'
+          : null;
+    const statusBorderColor = statusHighlightColor ?? palette.border;
     const desktopLine1 = `${selectedCourse.course.courseCode.toUpperCase()} | ${abbr} ${sectionId}`;
     const desktopLocationLabel = locationDisplay;
     const desktopLine2Title = `${classNumber ? `#${classNumber}` : ''}${classNumber ? ' • ' : ''}${desktopLocationLabel}`;
+    const hideMobileLocation = isSmallScreen && (displayMode === 'compact' || estimatedBlockHeight < 60);
+    const mobileLocationParts = (() => {
+      if (!isSmallScreen) return null;
+      const match = locationDisplay.match(/^([A-Za-z]+)[\s_-]*([\w]+.*)$/);
+      if (match && match[1] && match[2]) {
+        return {
+          head: match[1],
+          tail: match[2],
+        };
+      }
+      return null;
+    })();
 
     // Prepare text content
     const measuredWidth = blockDimensions.width > 0 ? blockDimensions.width : undefined;
     const estimatedWidth = estimatedBlockWidth;
-    const courseCode = (() => {
-      const raw = selectedCourse.course.courseCode;
-      if (!shouldAbbreviate) return raw;
-      if (estimatedWidth < 70) return raw.slice(0, 3);
-      if (estimatedWidth < 90) return raw.slice(0, 5);
-      return raw;
+    const formattedCode = formatCourseCode(selectedCourse.course.courseCode);
+    const [codeLettersRaw, ...codeNumberParts] = formattedCode.split(' ');
+    const codeNumbersRaw = codeNumberParts.join(' ').trim() || null;
+    const mobileCodeLetters = (() => {
+      const base = codeLettersRaw || formattedCode;
+      return base;
+    })();
+    const mobileCodeNumbers = (() => {
+      if (!codeNumbersRaw) return null;
+      return codeNumbersRaw;
     })();
 
     // Check if this is a valid drop target
@@ -850,14 +882,9 @@ export function TimetableGrid({
           backgroundImage: hasConflict
             ? `repeating-linear-gradient(135deg, rgba(250, 204, 21, 0.28) 0px, rgba(250, 204, 21, 0.08) 12px, transparent 12px, transparent 24px)`
             : undefined,
-          borderColor: selectedCourse.locked
-            ? 'rgba(255,255,255,0.95)'
-            : isFull
-              ? 'rgba(225, 29, 72, 0.94)'
-              : hasConflict
-                ? 'rgba(234, 179, 8, 0.95)'
-                : palette.border,
-          borderWidth: isFull || hasConflict || selectedCourse.locked ? '2px' : '1px',
+          borderColor: statusBorderColor,
+          borderWidth: '1px',
+          boxShadow: statusHighlightColor ? `0 0 0 2px ${statusHighlightColor}` : undefined,
           zIndex:
             isLocalHovered && hasConflict
               ? 200
@@ -928,55 +955,79 @@ export function TimetableGrid({
               </div>
             </div>
           ) : (
-            <>
-              <div className="flex flex-col gap-px">
-                {/* Line 1: Course Code */}
+            <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col leading-[1.05]">
                 <div
-                  className="font-semibold truncate max-w-full"
+                  className="font-black uppercase tracking-[0.05em] truncate max-w-full"
                   style={{
-                    fontSize: `${firstFs}px`,
+                    fontSize: `${Math.min(firstFs + 0.5, firstFs + 1)}px`,
                     color: textColor,
                     lineHeight: lineHeights.primary,
-                    whiteSpace: 'nowrap',
                   }}
-                  title={selectedCourse.course.courseCode}
+                  title={formattedCode}
                 >
-                  {courseCode}
+                  {mobileCodeLetters}
                   {selectedCourse.locked && (
-                    <Lock className="inline-block ml-1 w-2.5 h-2.5 opacity-80" />
+                    <Lock className="inline-block ml-1 w-2 h-2 opacity-80" />
                   )}
                 </div>
-
-                {/* Line 2: Section label */}
-                <div
-                  className="opacity-90 truncate max-w-full"
-                  style={{
-                    fontSize: `${secondFs}px`,
-                    color: textColor,
-                    lineHeight: lineHeights.secondary,
-                    whiteSpace: 'nowrap',
-                  }}
-                  title={`${abbr} ${sectionId}`}
-                >
-                  {abbr} {sectionId}
-                </div>
+                {mobileCodeNumbers && (
+                  <div
+                    className="font-black tracking-[0.08em] truncate max-w-full"
+                    style={{
+                      fontSize: `${secondFs + 0.4}px`,
+                      color: textColor,
+                      lineHeight: lineHeights.secondary,
+                    }}
+                    title={mobileCodeNumbers}
+                  >
+                    {mobileCodeNumbers}
+                  </div>
+                )}
               </div>
 
-              {/* Line 3: Class Number + Location */}
               <div
-                className="opacity-90 truncate max-w-full"
+                className="opacity-90 font-medium tracking-[0.08em] truncate max-w-full"
                 style={{
                   fontSize: `${secondFs}px`,
                   color: textColor,
                   lineHeight: lineHeights.secondary,
-                  whiteSpace: 'nowrap',
                 }}
-                title={classNumber ? `#${classNumber} • ${locationDisplay}` : locationDisplay}
+                title={`${abbr} ${sectionId}`}
               >
-                {classNumber ? `#${classNumber} • ` : ''}
-                {locationDisplay}
+                {abbr} {sectionId}
               </div>
-            </>
+
+              {!hideMobileLocation && (
+                <div
+                  className={cn(
+                    'opacity-90 truncate max-w-full',
+                    !isDesktop && 'mt-1.5'
+                  )}
+                  style={{
+                    fontSize: `${secondFs}px`,
+                    color: textColor,
+                    lineHeight: lineHeights.secondary,
+                  }}
+                  title={locationDisplay}
+                >
+                  {mobileLocationParts ? (
+                    <span className="inline-flex items-start gap-0.5">
+                      <MapPin className="w-2 h-2 text-white/90 mt-[1px]" />
+                      <span className="flex flex-col leading-tight text-left">
+                        <span>{mobileLocationParts.head}</span>
+                        <span>{mobileLocationParts.tail}</span>
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="w-2.5 h-2.5 text-white/90" />
+                      <span>{locationDisplay}</span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
 

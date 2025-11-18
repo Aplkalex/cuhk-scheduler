@@ -218,6 +218,8 @@ export default function Home() {
   const [isMobileActionsClosing, setIsMobileActionsClosing] = useState(false);
   const [isPreferencePickerOpen, setIsPreferencePickerOpen] = useState(false);
   const [isPreferencePickerClosing, setIsPreferencePickerClosing] = useState(false);
+  const [isSelectedCoursesSheetOpen, setIsSelectedCoursesSheetOpen] = useState(false);
+  const [isSelectedCoursesSheetClosing, setIsSelectedCoursesSheetClosing] = useState(false);
   const [isPrefPending, startPrefTransition] = useTransition();
   const [mobileView, setMobileView] = useState<'courses' | 'timetable'>('courses');
   const showMobileGenerateBar =
@@ -325,6 +327,18 @@ export default function Home() {
     window.setTimeout(() => {
       setIsPreferencePickerOpen(false);
       setIsPreferencePickerClosing(false);
+    }, 220);
+  }, []);
+
+  const openSelectedCoursesSheet = useCallback(() => {
+    setIsSelectedCoursesSheetClosing(false);
+    setIsSelectedCoursesSheetOpen(true);
+  }, []);
+  const closeSelectedCoursesSheet = useCallback(() => {
+    setIsSelectedCoursesSheetClosing(true);
+    window.setTimeout(() => {
+      setIsSelectedCoursesSheetOpen(false);
+      setIsSelectedCoursesSheetClosing(false);
     }, 220);
   }, []);
 
@@ -2339,12 +2353,17 @@ export default function Home() {
             style={{ willChange: 'transform' }}
           >
             <div className="flex items-center gap-2 px-3 py-2">
-              <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+              <button
+                type="button"
+                onClick={openSelectedCoursesSheet}
+                className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-md active:scale-[0.97] transition"
+                title="View selected courses"
+              >
                 <Book className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                 <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
                   {selectedCourseCodes.length} {selectedCourseCodes.length === 1 ? 'course' : 'courses'}
                 </span>
-              </div>
+              </button>
 
               <button
                 type="button"
@@ -2408,6 +2427,15 @@ export default function Home() {
         <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0)+8px)] z-40 px-3 pb-2">
           <div className={`mx-auto max-w-md rounded-2xl ${sheetClassName} shadow-[0_16px_40px_-12px_rgba(88,28,135,0.35)]`}>
             <div className="flex items-center justify-between gap-2 px-3 py-2">
+              <button
+                type="button"
+                onClick={openSelectedCoursesSheet}
+                className="flex items-center gap-1 px-2 py-2 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/50 dark:bg-purple-900/40 dark:text-purple-200"
+                title="View selected courses"
+              >
+                <Book className="w-3.5 h-3.5" />
+                <span className="text-xs font-bold">{selectedCourses.length} {selectedCourses.length === 1 ? 'course' : 'courses'}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setMobileView('courses')}
@@ -2474,6 +2502,95 @@ export default function Home() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selected courses quick sheet (mobile) */}
+      {isMobile && (isSelectedCoursesSheetOpen || isSelectedCoursesSheetClosing) && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className={`absolute inset-0 bg-black/45 ${isSelectedCoursesSheetClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}
+            onClick={closeSelectedCoursesSheet}
+          />
+          <div
+            className={`absolute bottom-0 inset-x-0 rounded-t-3xl ${sheetClassName} p-5 space-y-4 max-h-[70vh] overflow-y-auto ${isSelectedCoursesSheetClosing ? 'animate-slideDown' : 'animate-slideUp'} transform-gpu`}
+            style={{ willChange: 'transform' }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Selected courses</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Tap a course to view details.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeSelectedCoursesSheet}
+                className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                aria-label="Close selected courses"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {(() => {
+              // In auto-generate mode before generating, selectedCourses may be empty; use selectedCourseCodes fallback.
+              const hasSectionSelections = selectedCourses.length > 0;
+              const list = hasSectionSelections
+                ? selectedCourses.map((sc) => ({
+                    key: `${sc.course.courseCode}-${sc.selectedSection.sectionId}`,
+                    title: `${sc.course.courseCode} • ${sc.selectedSection.sectionType} ${sc.selectedSection.sectionId}`,
+                    sub: sc.selectedSection.timeSlots
+                      .map((slot) => `${slot.day} ${slot.startTime}-${slot.endTime}`)
+                      .join(', '),
+                    color: sc.color ?? '#8B5CF6',
+                    onClick: () => {
+                      setSelectedCourseDetails(sc);
+                      closeSelectedCoursesSheet();
+                    },
+                  }))
+                : selectedCourseCodes.map((code) => {
+                    const courseInfo = courses.find((c) => c.courseCode === code);
+                    return {
+                      key: code,
+                      title: courseInfo ? `${courseInfo.courseCode} • ${courseInfo.courseName}` : code,
+                      sub: courseInfo ? courseInfo.sections.length ? `${courseInfo.sections.length} sections` : 'No sections loaded' : 'Course selected',
+                      color: '#8B5CF6',
+                      onClick: () => {
+                        // Jump to courses tab and scroll the course into view if possible
+                        setMobileView('courses');
+                        closeSelectedCoursesSheet();
+                        // no direct scroll target available here without refs
+                      },
+                    };
+                  });
+
+              if (list.length === 0) {
+                return <p className="text-sm text-gray-500 dark:text-gray-400">You haven&apos;t added any courses yet.</p>;
+              }
+
+              return (
+                <div className="space-y-2">
+                  {list.map((item) => (
+                    <button
+                      key={item.key}
+                      onClick={item.onClick}
+                      className="w-full text-left px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-[#1e1e1e]/70 hover:bg-white dark:hover:bg-[#1e1e1e]/90 transition"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">{item.title}</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">{item.sub}</span>
+                        </div>
+                        <span
+                          className="w-3 h-3 rounded-full border"
+                          style={{ backgroundColor: item.color, borderColor: item.color }}
+                        />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
