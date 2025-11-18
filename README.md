@@ -22,19 +22,29 @@
 
 <br/>
 
-<p align="center">
-  <a href="https://queuesis.vercel.app" style="text-decoration: none; border: none;">
-    <img src="https://img.shields.io/badge/🚀_Launch_App-6B46C1?style=for-the-badge&logoColor=white" alt="Launch App" height="50" style="border: none; display: inline-block;"/>
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="#-getting-started" style="text-decoration: none; border: none;">
-    <img src="https://img.shields.io/badge/📖_Get_Started-4C1D95?style=for-the-badge&logoColor=white" alt="Get Started" height="50" style="border: none; display: inline-block;"/>
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/Aplkalex/cuhk-scheduler/issues" style="text-decoration: none; border: none;">
-    <img src="https://img.shields.io/badge/💡_Request_Feature-7C3AED?style=for-the-badge&logoColor=white" alt="Request Feature" height="50" style="border: none;"/>
-  </a>
-</p>
+<<div align="center">
+<table>
+<tr>
+<td>
+<a href="https://queuesis.vercel.app">
+  <img src="https://img.shields.io/badge/🚀_Launch_App-6B46C1?style=for-the-badge&logoColor=white" alt="Launch App" height="50"/>
+</a>
+</td>
+<td width="20"></td>
+<td>
+<a href="#-getting-started">
+  <img src="https://img.shields.io/badge/📖_Get_Started-4C1D95?style=for-the-badge&logoColor=white" alt="Get Started" height="50"/>
+</a>
+</td>
+<td width="20"></td>
+<td>
+<a href="https://github.com/Aplkalex/cuhk-scheduler/issues">
+  <img src="https://img.shields.io/badge/💡_Request_Feature-7C3AED?style=for-the-badge&logoColor=white" alt="Request Feature" height="50"/>
+</a>
+</td>
+</tr>
+</table>
+</div>
 
 <br/><br/>
 
