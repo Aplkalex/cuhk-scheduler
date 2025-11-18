@@ -24,11 +24,11 @@
 
 <p align="center">
   <a href="https://queuesis.vercel.app" style="text-decoration: none; border: none;">
-    <img src="https://img.shields.io/badge/🚀_Launch_App-6B46C1?style=for-the-badge&logoColor=white" alt="Launch App" height="50" style="border: none;"/>
+    <img src="https://img.shields.io/badge/🚀_Launch_App-6B46C1?style=for-the-badge&logoColor=white" alt="Launch App" height="50" style="border: none; display: inline-block;"/>
   </a>
   &nbsp;&nbsp;&nbsp;
   <a href="#-getting-started" style="text-decoration: none; border: none;">
-    <img src="https://img.shields.io/badge/📖_Get_Started-4C1D95?style=for-the-badge&logoColor=white" alt="Get Started" height="50" style="border: none;"/>
+    <img src="https://img.shields.io/badge/📖_Get_Started-4C1D95?style=for-the-badge&logoColor=white" alt="Get Started" height="50" style="border: none; display: inline-block;"/>
   </a>
   &nbsp;&nbsp;&nbsp;
   <a href="https://github.com/Aplkalex/cuhk-scheduler/issues" style="text-decoration: none; border: none;">
