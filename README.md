@@ -23,8 +23,7 @@
 <br/>
 
 <div align="center">
-<table border="0" cellspacing="0" cellpadding="0">
-<table>
+<table style="border: none; border-collapse: collapse;" border="0" cellspacing="0" cellpadding="0"><table>
 <tr>
 <td>
 <a href="https://queuesis.vercel.app">
