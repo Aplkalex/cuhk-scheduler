@@ -22,6 +22,8 @@
 
 <br/>
 
+<div align="center">
+
 <a href="https://queuesis.vercel.app">
   <img src="https://img.shields.io/badge/🚀_Launch_App-6B46C1?style=for-the-badge&logoColor=white" alt="Launch App" height="50"/>
 </a>
@@ -144,7 +146,7 @@ Choose from multiple optimization preferences:
 
 ### Choose Your Path
 
-<table>
+<table width="90%">
 <tr>
 <td align="center" width="50%">
 
@@ -158,7 +160,7 @@ Choose from multiple optimization preferences:
 No installation needed!
 
 </td>
-<td align="center" width="70%">
+<td align="center" width="50%">
 
 ### 💻 Run Locally
 **Want to develop or customize?**
@@ -167,7 +169,7 @@ No installation needed!
   <img src="https://img.shields.io/badge/Setup_Guide-4C1D95?style=for-the-badge&logoColor=white" alt="Setup Guide" height="45"/>
 </a>
 
-Follow our quick [setup guide](#-getting-started) below
+ Follow our quick [setup guide](#-getting-started-1) below
 </td>
 </tr>
 </table>
@@ -178,7 +180,7 @@ Follow our quick [setup guide](#-getting-started) below
 
 <div align="center">
 
-<table>
+<table width="90%">
 <tr>
 <td align="center" valign="top" width="50%">
 
