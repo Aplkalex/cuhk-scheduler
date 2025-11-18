@@ -2608,7 +2608,7 @@ export default function Home() {
           {/* Bottom-right FAB removed on mobile in favor of header trigger */}
 
           {(isMobileActionsOpen || isMobileActionsClosing) && (
-            <div className="fixed inset-0 z-40 lg:hidden">
+            <div className="fixed inset-0 z-[999] lg:hidden">
               <div
                 className={`absolute inset-0 bg-black/45 ${isMobileActionsClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}
                 onClick={() => closeMobileActions()}
