@@ -22,19 +22,17 @@
 
 <br/>
 
-<div align="center">
-  
-<p>
-  <a href="https://queuesis.vercel.app">
-    <img src="https://img.shields.io/badge/🚀_Launch_App-6B46C1?style=for-the-badge&logoColor=white" alt="Launch App" height="50"/>
+<p align="center">
+  <a href="https://queuesis.vercel.app" style="text-decoration: none; border: none;">
+    <img src="https://img.shields.io/badge/🚀_Launch_App-6B46C1?style=for-the-badge&logoColor=white" alt="Launch App" height="50" style="border: none;"/>
   </a>
-  &nbsp;&nbsp;
-  <a href="#-getting-started">
-    <img src="https://img.shields.io/badge/📖_Get_Started-4C1D95?style=for-the-badge&logoColor=white" alt="Get Started" height="50"/>
+  &nbsp;&nbsp;&nbsp;
+  <a href="#-getting-started" style="text-decoration: none; border: none;">
+    <img src="https://img.shields.io/badge/📖_Get_Started-4C1D95?style=for-the-badge&logoColor=white" alt="Get Started" height="50" style="border: none;"/>
   </a>
-  &nbsp;&nbsp;
-  <a href="https://github.com/Aplkalex/cuhk-scheduler/issues">
-    <img src="https://img.shields.io/badge/💡_Request_Feature-7C3AED?style=for-the-badge&logoColor=white" alt="Request Feature" height="50"/>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/Aplkalex/cuhk-scheduler/issues" style="text-decoration: none; border: none;">
+    <img src="https://img.shields.io/badge/💡_Request_Feature-7C3AED?style=for-the-badge&logoColor=white" alt="Request Feature" height="50" style="border: none;"/>
   </a>
 </p>
 
