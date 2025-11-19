@@ -37,6 +37,10 @@ export const metadata: Metadata = {
     title: "Queuesis — CUHK Timetable Planner",
     description: "Plan your perfect CUHK timetable",
   },
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+  },
 };
 
 export default function RootLayout({

@@ -2336,30 +2336,6 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Mobile Bottom Controls */}
-      {/* Tabs bar (Courses | Timetable) - show only when no other mobile bottom bar is visible */}
-      {isMobile && !((mobileView === 'courses' && showMobileGenerateBar) || (mobileView === 'timetable' && generatedSchedules.length > 0)) && (
-        <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
-          <div className={`mx-auto max-w-md ${sheetClassName} rounded-full p-1 flex items-center justify-between`}>
-            <button
-              type="button"
-              onClick={() => setMobileView('courses')}
-              className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold transition ${mobileView === 'courses' ? 'bg-purple-600 text-white shadow' : 'text-gray-700 dark:text-gray-300'}`}
-            >
-              Courses
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileView('timetable')}
-              disabled={selectedCourses.length === 0}
-              className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold transition ${mobileView === 'timetable' ? 'bg-purple-600 text-white shadow' : selectedCourses.length === 0 ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300'}`}
-            >
-              Timetable
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Sticky Generate Bar (Mobile) - courses view only */}
       {showMobileGenerateBar && isMobile && mobileView === 'courses' && (
         <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0)+8px)] z-40 px-3 pb-2 animate-fadeIn">
@@ -2438,7 +2414,7 @@ export default function Home() {
         </div>
       )}
       {/* Timetable bottom bar (Mobile) - timetable view only */}
-      {isMobile && mobileView === 'timetable' && generatedSchedules.length > 0 && (
+      {isMobile && mobileView === 'timetable' && selectedCourses.length > 0 && (
         <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0)+8px)] z-40 px-3 pb-2">
           <div className={`mx-auto max-w-md rounded-2xl ${sheetClassName} shadow-[0_16px_40px_-12px_rgba(88,28,135,0.35)]`}>
             <div className="flex items-center justify-between gap-2 px-3 py-2">
@@ -2462,63 +2438,67 @@ export default function Home() {
               >
                 ←
               </button>
-              <div className="flex items-center gap-1">
-                {generatedSchedules.length > 1 && (
-                  <button
-                    onClick={() => {
-                      const newIndex = selectedScheduleIndex > 0 ? selectedScheduleIndex - 1 : generatedSchedules.length - 1;
-                      setSelectedScheduleIndex(newIndex);
-                      const schedulesWithColors = assignColorsToSchedule(generatedSchedules[newIndex].sections);
-                      setSelectedCourses(schedulesWithColors);
-                      updateConflicts(schedulesWithColors);
-                      setConflictToast([]);
-                    }}
-                    className="px-2 py-2 rounded-xl bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-700"
-                    title="Previous schedule"
-                  >
-                    <ChevronDown className="w-4 h-4 rotate-90" />
-                  </button>
-                )}
-                <div className="px-3 py-2 rounded-xl bg-white/60 dark:bg-[#1e1e1e]/60 text-xs font-bold">
-                  {generatedSchedules.length > 1 ? `${selectedScheduleIndex + 1}/${generatedSchedules.length}` : '1/1'}
+              {generatedSchedules.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {generatedSchedules.length > 1 && (
+                    <button
+                      onClick={() => {
+                        const newIndex = selectedScheduleIndex > 0 ? selectedScheduleIndex - 1 : generatedSchedules.length - 1;
+                        setSelectedScheduleIndex(newIndex);
+                        const schedulesWithColors = assignColorsToSchedule(generatedSchedules[newIndex].sections);
+                        setSelectedCourses(schedulesWithColors);
+                        updateConflicts(schedulesWithColors);
+                        setConflictToast([]);
+                      }}
+                      className="px-2 py-2 rounded-xl bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-700"
+                      title="Previous schedule"
+                    >
+                      <ChevronDown className="w-4 h-4 rotate-90" />
+                    </button>
+                  )}
+                  <div className="px-3 py-2 rounded-xl bg-white/60 dark:bg-[#1e1e1e]/60 text-xs font-bold">
+                    {`${Math.min(selectedScheduleIndex + 1, generatedSchedules.length)}/${generatedSchedules.length}`}
+                  </div>
+                  {generatedSchedules.length > 1 && (
+                    <button
+                      onClick={() => {
+                        const newIndex = selectedScheduleIndex < generatedSchedules.length - 1 ? selectedScheduleIndex + 1 : 0;
+                        setSelectedScheduleIndex(newIndex);
+                        const schedulesWithColors = assignColorsToSchedule(generatedSchedules[newIndex].sections);
+                        setSelectedCourses(schedulesWithColors);
+                        updateConflicts(schedulesWithColors);
+                        setConflictToast([]);
+                      }}
+                      className="px-2 py-2 rounded-xl bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-700"
+                      title="Next schedule"
+                    >
+                      <ChevronDown className="w-4 h-4 -rotate-90" />
+                    </button>
+                  )}
                 </div>
-                {generatedSchedules.length > 1 && (
-                  <button
-                    onClick={() => {
-                      const newIndex = selectedScheduleIndex < generatedSchedules.length - 1 ? selectedScheduleIndex + 1 : 0;
-                      setSelectedScheduleIndex(newIndex);
-                      const schedulesWithColors = assignColorsToSchedule(generatedSchedules[newIndex].sections);
-                      setSelectedCourses(schedulesWithColors);
-                      updateConflicts(schedulesWithColors);
-                      setConflictToast([]);
-                    }}
-                    className="px-2 py-2 rounded-xl bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-700"
-                    title="Next schedule"
-                  >
-                    <ChevronDown className="w-4 h-4 -rotate-90" />
-                  </button>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={handleGenerateSchedules}
-                disabled={!hasCourseSelectionForGeneration || isGenerating}
-                className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed text-xs"
-                aria-disabled={!hasCourseSelectionForGeneration || isGenerating}
-                title="Regenerate"
-              >
-                {isGenerating ? (
-                  <>
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Gen...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3 h-3" />
-                    Generate
-                  </>
-                )}
-              </button>
+              )}
+              {scheduleMode === 'auto-generate' && (
+                <button
+                  type="button"
+                  onClick={handleGenerateSchedules}
+                  disabled={!hasCourseSelectionForGeneration || isGenerating}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed text-xs"
+                  aria-disabled={!hasCourseSelectionForGeneration || isGenerating}
+                  title="Regenerate"
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Gen...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3 h-3" />
+                      Generate
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
