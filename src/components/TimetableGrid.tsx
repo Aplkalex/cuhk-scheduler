@@ -332,7 +332,7 @@ export function TimetableGrid({
     : 'border-gray-200/35 dark:border-white/[0.08]';
 
   const courseBlockBaseClass = cn(
-    'absolute rounded-[7px] cursor-pointer group flex flex-col border bg-clip-padding',
+    'absolute rounded-[7px] cursor-pointer group flex flex-col border bg-clip-padding select-none',
     'transition-transform duration-200 ease-out shadow-none hover:shadow-none',
     // Use tighter padding on narrow/overlapping pills so text fits better
     'px-[5px] py-[3px] sm:px-2 sm:py-[5px]'

@@ -82,7 +82,7 @@ export function TermSelector({
         onClick={() => (open ? handleClose() : handleOpen())}
         disabled={isLoading}
         className={cn(
-          'inline-flex items-center gap-1.5 text-xs px-3 py-1.5 pr-7 rounded-lg border',
+          'inline-flex items-center gap-1.5 text-xs px-3 py-1.5 pr-7 rounded-lg border select-none',
           'bg-white dark:bg-[#1f1f22]',
           'text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-700',
           'shadow-sm hover:shadow transition-all cursor-pointer appearance-none whitespace-nowrap',
