@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-@variant dark (&:where(.dark, .dark *));
 
 /* Force solid black background in dark mode */
 html.dark {
