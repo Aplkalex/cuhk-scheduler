@@ -1756,223 +1756,226 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                {!isScheduleCollapsed && selectedCourses.length > 0 && (
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                    {uniqueCourseCount} course{uniqueCourseCount !== 1 ? 's' : ''} • {calculateTotalCredits(selectedCourses)} credits
-                  </div>
-                )}
               </div>
 
               {/* Selected Courses - Collapsible content */}
-              {!isScheduleCollapsed && selectedCourses.length > 0 && (
-                <div className="px-4 py-3 max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-purple-400 dark:scrollbar-thumb-purple-600 scrollbar-track-transparent">
-                  <div className="space-y-2">
-                    {selectedCourses.map((sc, idx) => {
-                      const isExpanded = expandedScheduleCourse === idx;
-                      const section = sc.selectedSection;
-                      const hasSeats = hasAvailableSeats(section);
-                      
-                      return (
-                        <div
-                          key={idx}
-                          className="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden transition-all"
-                          style={{ 
-                            backgroundColor: `${sc.color}10`,
-                            borderColor: `${sc.color}40`
-                          }}
-                        >
-                          {/* Section Header */}
-                          <div className="group flex items-center gap-2 p-2 hover:bg-white/50 dark:hover:bg-black/20 transition-all">
-                            <button
-                              onClick={() => setExpandedScheduleCourse(isExpanded ? null : idx)}
-                              className="flex-shrink-0 p-0.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                            >
-                              {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                            </button>
+              <div
+                className={`transition-all duration-300 ease-out overflow-hidden ${isScheduleCollapsed ? 'max-h-0 opacity-0 -translate-y-1 pointer-events-none' : 'max-h-[520px] opacity-100 translate-y-0'}`}
+              >
+                {selectedCourses.length > 0 ? (
+                  <>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 px-4">
+                      {uniqueCourseCount} course{uniqueCourseCount !== 1 ? 's' : ''} • {calculateTotalCredits(selectedCourses)} credits
+                    </div>
+                    <div className="px-4 py-3 max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-purple-400 dark:scrollbar-thumb-purple-600 scrollbar-track-transparent">
+                      <div className="space-y-2">
+                        {selectedCourses.map((sc, idx) => {
+                          const isExpanded = expandedScheduleCourse === idx;
+                          const section = sc.selectedSection;
+                          const hasSeats = hasAvailableSeats(section);
+                          
+                          return (
                             <div
-                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: sc.color }}
-                            />
-                            <button
-                              onClick={() => setExpandedScheduleCourse(isExpanded ? null : idx)}
-                              className="flex-1 min-w-0 text-left"
-                            >
-                              <div className="font-semibold text-xs text-gray-900 dark:text-gray-100">
-                                {sc.course.courseCode}
-                              </div>
-                              <div className="text-[10px] text-gray-600 dark:text-gray-400">
-                                {section.sectionType} {section.sectionId}
-                              </div>
-                            </button>
-                            <button
-                              onClick={() => !sc.locked && handleRemoveCourse(idx)}
-                              disabled={sc.locked}
-                              className={`p-1 rounded transition-all opacity-60 group-hover:opacity-100 ${sc.locked ? 'text-gray-400 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
-                              title={sc.locked ? 'Unlock to remove' : 'Remove course'}
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                            {/* Lock/Unlock toggle */}
-                            <button
-                              onClick={() => {
-                                setSelectedCourses(prev => prev.map((item, i) => i === idx ? { ...item, locked: !item.locked } : item));
-                                setLockedSectionKeys(prev => {
-                                  const key = `${sc.course.courseCode}|${sc.selectedSection.sectionId}`;
-                                  const set = new Set(prev);
-                                  if (set.has(key)) set.delete(key); else set.add(key);
-                                  return Array.from(set);
-                                });
+                              key={idx}
+                              className="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden transition-all"
+                              style={{ 
+                                backgroundColor: `${sc.color}10`,
+                                borderColor: `${sc.color}40`
                               }}
-                              className={`p-1 rounded transition-all opacity-60 group-hover:opacity-100 ${sc.locked ? 'text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/60'}`}
-                              title={sc.locked ? 'Unlock (allow changes)' : 'Lock (fix this section)'}
                             >
-                              {sc.locked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-
-                          {/* Expanded Section Details */}
-                          {isExpanded && (
-                            <div className="px-3 py-2 bg-white/30 dark:bg-black/20 border-t border-gray-200/50 dark:border-gray-600/50 space-y-2">
-                              {/* Schedule */}
-                              <div>
-                                <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  Schedule
-                                </div>
-                                <div className="space-y-1">
-                                  {section.timeSlots.map((slot, slotIdx) => (
-                                    <div key={slotIdx} className="text-[10px] text-gray-600 dark:text-gray-400">
-                                      {slot.day} {slot.startTime} - {slot.endTime}
-                                      {slot.location && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleLocationClick(slot.location!)}
-                                          className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 ml-1 transition-colors"
-                                          title={`Open ${slot.location} on map`}
-                                        >
-                                          <span aria-hidden>📍</span>
-                                          <span className="underline decoration-dotted underline-offset-2">
-                                            {slot.location}
-                                          </span>
-                                        </button>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Instructor */}
-                              {section.instructor && (
-                                <div>
-                                  <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                                    👤 Instructor
+                              {/* Section Header */}
+                              <div className="group flex items-center gap-2 p-2 hover:bg-white/50 dark:hover:bg-black/20 transition-all">
+                                <button
+                                  onClick={() => setExpandedScheduleCourse(isExpanded ? null : idx)}
+                                  className="flex-shrink-0 p-0.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                                >
+                                  {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                                </button>
+                                <div
+                                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: sc.color }}
+                                />
+                                <button
+                                  onClick={() => setExpandedScheduleCourse(isExpanded ? null : idx)}
+                                  className="flex-1 min-w-0 text-left"
+                                >
+                                  <div className="font-semibold text-xs text-gray-900 dark:text-gray-100">
+                                    {sc.course.courseCode}
                                   </div>
                                   <div className="text-[10px] text-gray-600 dark:text-gray-400">
-                                    {section.instructor.name}
+                                    {section.sectionType} {section.sectionId}
+                                  </div>
+                                </button>
+                                <button
+                                  onClick={() => !sc.locked && handleRemoveCourse(idx)}
+                                  disabled={sc.locked}
+                                  className={`p-1 rounded transition-all opacity-60 group-hover:opacity-100 ${sc.locked ? 'text-gray-400 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
+                                  title={sc.locked ? 'Unlock to remove' : 'Remove course'}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                                {/* Lock/Unlock toggle */}
+                                <button
+                                  onClick={() => {
+                                    setSelectedCourses(prev => prev.map((item, i) => i === idx ? { ...item, locked: !item.locked } : item));
+                                    setLockedSectionKeys(prev => {
+                                      const key = `${sc.course.courseCode}|${sc.selectedSection.sectionId}`;
+                                      const set = new Set(prev);
+                                      if (set.has(key)) set.delete(key); else set.add(key);
+                                      return Array.from(set);
+                                    });
+                                  }}
+                                  className={`p-1 rounded transition-all opacity-60 group-hover:opacity-100 ${sc.locked ? 'text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/60'}`}
+                                  title={sc.locked ? 'Unlock (allow changes)' : 'Lock (fix this section)'}
+                                >
+                                  {sc.locked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
+
+                              {/* Expanded Section Details */}
+                              {isExpanded && (
+                                <div className="px-3 py-2 bg-white/30 dark:bg-black/20 border-t border-gray-200/50 dark:border-gray-600/50 space-y-2">
+                                  {/* Schedule */}
+                                  <div>
+                                    <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                                      <Clock className="w-3 h-3" />
+                                      Schedule
+                                    </div>
+                                    <div className="space-y-1">
+                                      {section.timeSlots.map((slot, slotIdx) => (
+                                        <div key={slotIdx} className="text-[10px] text-gray-600 dark:text-gray-400">
+                                          {slot.day} {slot.startTime} - {slot.endTime}
+                                          {slot.location && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleLocationClick(slot.location!)}
+                                              className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 ml-1 transition-colors"
+                                              title={`Open ${slot.location} on map`}
+                                            >
+                                              <span aria-hidden>📍</span>
+                                              <span className="underline decoration-dotted underline-offset-2">
+                                                {slot.location}
+                                              </span>
+                                            </button>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* Instructor */}
+                                  {section.instructor && (
+                                    <div>
+                                      <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                        👤 Instructor
+                                      </div>
+                                      <div className="text-[10px] text-gray-600 dark:text-gray-400">
+                                        {section.instructor.name}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Enrollment Status */}
+                                  <div>
+                                    <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                      📊 Enrollment
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px]">
+                                      <span className="text-gray-600 dark:text-gray-400">
+                                        Status:
+                                      </span>
+                                      <span className={`font-semibold px-1.5 py-0.5 rounded ${
+                                        hasSeats 
+                                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                          : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                      }`}>
+                                        {hasSeats ? 'Open' : 'Closed'}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] mt-1">
+                                      <span className="text-gray-600 dark:text-gray-400">
+                                        Enrolled / Quota:
+                                      </span>
+                                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                        {section.enrolled} / {section.quota}
+                                      </span>
+                                    </div>
+                                    {hasSeats && (
+                                      <div className="flex items-center justify-between text-[10px] mt-1">
+                                        <span className="text-gray-600 dark:text-gray-400">
+                                          Seats Remaining:
+                                        </span>
+                                        <span className="font-semibold text-green-700 dark:text-green-400">
+                                          {section.seatsRemaining}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Quick actions: Lock all / Unlock all for this course */}
+                                  <div className="pt-2 border-t border-gray-200/60 dark:border-gray-700/60 flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const code = sc.course.courseCode;
+                                        setSelectedCourses(prev => prev.map(item =>
+                                          item.course.courseCode === code ? { ...item, locked: true } : item
+                                        ));
+                                        setLockedSectionKeys(prev => {
+                                          const set = new Set(prev);
+                                          selectedCourses
+                                            .filter((item): item is SelectedCourse => Boolean(item && item.course && item.selectedSection))
+                                            .filter(item => item.course.courseCode === code)
+                                            .forEach(item => set.add(`${item.course.courseCode}|${item.selectedSection.sectionId}`));
+                                          return Array.from(set);
+                                        });
+                                      }}
+                                      className="px-2 py-1 text-[10px] font-semibold rounded-md bg-amber-600 hover:bg-amber-700 text-white"
+                                      title="Lock all sections of this course"
+                                    >
+                                      <Lock className="w-3 h-3 inline-block mr-1" />
+                                      Lock All
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const code = sc.course.courseCode;
+                                        setSelectedCourses(prev => prev.map(item =>
+                                          item.course.courseCode === code ? { ...item, locked: false } : item
+                                        ));
+                                        setLockedSectionKeys(prev => {
+                                          const set = new Set(prev);
+                                          selectedCourses
+                                            .filter((item): item is SelectedCourse => Boolean(item && item.course && item.selectedSection))
+                                            .filter(item => item.course.courseCode === code)
+                                            .forEach(item => set.delete(`${item.course.courseCode}|${item.selectedSection.sectionId}`));
+                                          return Array.from(set);
+                                        });
+                                      }}
+                                      className="px-2 py-1 text-[10px] font-semibold rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
+                                      title="Unlock all sections of this course"
+                                    >
+                                      <Unlock className="w-3 h-3 inline-block mr-1" />
+                                      Unlock All
+                                    </button>
                                   </div>
                                 </div>
                               )}
-
-                              {/* Enrollment Status */}
-                              <div>
-                                <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                                  📊 Enrollment
-                                </div>
-                                <div className="flex items-center justify-between text-[10px]">
-                                  <span className="text-gray-600 dark:text-gray-400">
-                                    Status:
-                                  </span>
-                                  <span className={`font-semibold px-1.5 py-0.5 rounded ${
-                                    hasSeats 
-                                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                  }`}>
-                                    {hasSeats ? 'Open' : 'Closed'}
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between text-[10px] mt-1">
-                                  <span className="text-gray-600 dark:text-gray-400">
-                                    Enrolled / Quota:
-                                  </span>
-                                  <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                    {section.enrolled} / {section.quota}
-                                  </span>
-                                </div>
-                                {hasSeats && (
-                                  <div className="flex items-center justify-between text-[10px] mt-1">
-                                    <span className="text-gray-600 dark:text-gray-400">
-                                      Seats Remaining:
-                                    </span>
-                                    <span className="font-semibold text-green-700 dark:text-green-400">
-                                      {section.seatsRemaining}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Quick actions: Lock all / Unlock all for this course */}
-                              <div className="pt-2 border-t border-gray-200/60 dark:border-gray-700/60 flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const code = sc.course.courseCode;
-                                    setSelectedCourses(prev => prev.map(item =>
-                                      item.course.courseCode === code ? { ...item, locked: true } : item
-                                    ));
-                                    setLockedSectionKeys(prev => {
-                                      const set = new Set(prev);
-                                      selectedCourses
-                                        .filter((item): item is SelectedCourse => Boolean(item && item.course && item.selectedSection))
-                                        .filter(item => item.course.courseCode === code)
-                                        .forEach(item => set.add(`${item.course.courseCode}|${item.selectedSection.sectionId}`));
-                                      return Array.from(set);
-                                    });
-                                  }}
-                                  className="px-2 py-1 text-[10px] font-semibold rounded-md bg-amber-600 hover:bg-amber-700 text-white"
-                                  title="Lock all sections of this course"
-                                >
-                                  <Lock className="w-3 h-3 inline-block mr-1" />
-                                  Lock All
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const code = sc.course.courseCode;
-                                    setSelectedCourses(prev => prev.map(item =>
-                                      item.course.courseCode === code ? { ...item, locked: false } : item
-                                    ));
-                                    setLockedSectionKeys(prev => {
-                                      const set = new Set(prev);
-                                      selectedCourses
-                                        .filter((item): item is SelectedCourse => Boolean(item && item.course && item.selectedSection))
-                                        .filter(item => item.course.courseCode === code)
-                                        .forEach(item => set.delete(`${item.course.courseCode}|${item.selectedSection.sectionId}`));
-                                      return Array.from(set);
-                                    });
-                                  }}
-                                  className="px-2 py-1 text-[10px] font-semibold rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
-                                  title="Unlock all sections of this course"
-                                >
-                                  <Unlock className="w-3 h-3 inline-block mr-1" />
-                                  Unlock All
-                                </button>
-                              </div>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="px-4 py-6 text-center">
+                    <Calendar className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      No courses added yet
+                    </p>
                   </div>
-                </div>
-              )}
-              {!isScheduleCollapsed && selectedCourses.length === 0 && (
-                <div className="px-4 py-6 text-center">
-                  <Calendar className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    No courses added yet
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Mini Timetable Preview (mobile) */}
