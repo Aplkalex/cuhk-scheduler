@@ -1824,39 +1824,40 @@ export default function Home() {
                   iconSize={18}
                 />
               </div>
-              {/* Mobile Quick Actions trigger near brand */}
-              <button
-                type="button"
-                onClick={() => (isMobileActionsOpen ? closeMobileActions() : openMobileActions())}
-                className="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all duration-200 ease-out shadow-sm active:scale-95 group
-                           bg-gray-100/80 border-gray-200 text-gray-700 hover:bg-gray-200/80 hover:border-gray-300
-                           dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
-                aria-label="Open quick actions"
-                title="Quick actions"
-                aria-expanded={isMobileActionsOpen}
-              >
-                <Menu className="w-4 h-4 transition-transform duration-200 ease-out group-hover:rotate-90 text-purple-600 dark:text-white" />
-              </button>
-              {/* Mobile GitHub link next to menu */}
-              <a
-                href="https://github.com/Aplkalex/Queuesis"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all duration-200 ease-out shadow-sm active:scale-95
-                           bg-gray-100/80 border-gray-200 text-gray-700 hover:bg-gray-200/80 hover:border-gray-300
-                           dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
-                aria-label="Open GitHub repository"
-                title="GitHub"
-              >
-                <Github className="w-4 h-4" />
-              </a>
-              <BugReportMenu
-                triggerClassName="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all duration-200 ease-out shadow-sm active:scale-95
-                  bg-gray-100/80 border-gray-200 text-gray-700 hover:bg-gray-200/80 hover:border-gray-300
-                  dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10 ml-1"
-                align="left"
-                iconSize={18}
-              />
+              {/* Mobile quick actions cluster */}
+              <div className="lg:hidden flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => (isMobileActionsOpen ? closeMobileActions() : openMobileActions())}
+                  className="inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all duration-200 ease-out shadow-sm active:scale-95 group
+                             bg-gray-100/80 border-gray-200 text-gray-700 hover:bg-gray-200/80 hover:border-gray-300
+                             dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                  aria-label="Open quick actions"
+                  title="Quick actions"
+                  aria-expanded={isMobileActionsOpen}
+                >
+                  <Menu className="w-4 h-4 transition-transform duration-200 ease-out group-hover:rotate-90 text-purple-600 dark:text-white" />
+                </button>
+                <a
+                  href="https://github.com/Aplkalex/Queuesis"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all duration-200 ease-out shadow-sm active:scale-95
+                             bg-gray-100/80 border-gray-200 text-gray-700 hover:bg-gray-200/80 hover:border-gray-300
+                             dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                  aria-label="Open GitHub repository"
+                  title="GitHub"
+                >
+                  <Github className="w-4 h-4" />
+                </a>
+                <BugReportMenu
+                  triggerClassName="inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all duration-200 ease-out shadow-sm active:scale-95
+                    bg-gray-100/80 border-gray-200 text-gray-700 hover:bg-gray-200/80 hover:border-gray-300
+                    dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                  align="left"
+                  iconSize={18}
+                />
+              </div>
               {/* Mobile Import/Export near brand (timetable view) */}
               {isMobile && mobileView === 'timetable' && (
                 <>
