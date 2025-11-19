@@ -146,8 +146,8 @@ const BugReportMenu = ({
 
   const headerPadding = 'px-4 py-3';
   const bodyPadding = 'px-4 py-3';
-  const mailtoHref = `mailto:queuesis@aplkalex.com?subject=${encodeURIComponent('Queuesis Feedback')}&body=${encodeURIComponent(
-    'Hi QueueSis team,\n\n(Describe your issue or idea here)\n'
+  const mailtoHref = `mailto:queuesis@aplkalex.com?subject=${encodeURIComponent('Queuesis Feedback / Bug Report')}&body=${encodeURIComponent(
+    'Hi Queuesis,\n\n(Describe your issue or idea here)\n'
   )}`;
 
   return (
