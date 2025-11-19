@@ -56,7 +56,7 @@ https://github.com/user-attachments/assets/1219127c-e958-4496-b7ec-94ed48727549
 | Feature | Preview |
 | :--- | :--- |
 | **🔍 Instant Search**<br><br>Real-time filtering allows you to find and add courses to your planning list instantly. | <img src="https://github.com/user-attachments/assets/02798f7c-125e-4547-99b4-0cbac5c4673d" width="100%" /> |
-| **🖱️ Drag & Drop**<br><br>Fully interactive interface. Easily move courses around; snap-to-grid ensures valid scheduling. | <img src="https://github.com/user-attachments/assets/b7668b8b-14a7-4b3f-abd6-f5749756ab55" width="100%" /> |
+| **🖱️ Drag & Drop**<br><br>Fully interactive interface. Easily move courses around; snap-to-grid ensures valid scheduling. | <img src="https://github.com/user-attachments/assets/09b2a2bf-d1f7-4f06-8901-1d91bce42757" width="100%" /> |
 | **🤖 Smart Auto-Plan**<br><br>One-click algorithm that generates the optimal schedule based on your course list. | <img src="https://github.com/user-attachments/assets/4e6247ef-27bb-4a7f-acf4-908f0a218df3" width="100%" /> |
 
 <br/>
