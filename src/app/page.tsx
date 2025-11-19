@@ -14,6 +14,7 @@ import { generateCourseColor, calculateTotalCredits, detectConflicts, hasAvailab
 import { TIMETABLE_CONFIG, WEEKDAY_SHORT } from '@/lib/constants';
 import { generateSchedules, type GeneratedSchedule } from '@/lib/schedule-generator';
 import { DISCLAIMER } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 import {
   Calendar,
   Book,
@@ -116,6 +117,9 @@ const BugReportMenu = ({
   }, [open]);
 
   const menuPosition = align === 'right' ? 'right-0' : 'left-0';
+  const menuWidthClass = 'w-64';
+  const headerPadding = 'px-4 py-3';
+  const bodyPadding = 'px-4 py-3';
 
   return (
     <div ref={containerRef} className="relative">
@@ -132,20 +136,26 @@ const BugReportMenu = ({
       </button>
       {open && (
         <div
-          className={`absolute mt-2 w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#121212] shadow-2xl z-50 text-sm ${menuPosition}`}
+          className={cn(
+            `absolute mt-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#121212] shadow-2xl z-50 text-sm ${menuPosition}`,
+            menuWidthClass,
+            'max-w-[80vw]'
+          )}
           role="menu"
         >
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-            <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Need help?</div>
-            <div className="text-[11px] text-gray-500 dark:text-gray-400">Report issues or suggest improvements.</div>
+          <div className={`${headerPadding} border-b border-gray-100 dark:border-gray-800`}>
+            <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">Need help?</div>
+            <div className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">
+              Report issues or suggest improvements.
+            </div>
           </div>
           <a
             href="mailto:queuesis@aplkalex.com"
-            className="flex items-center justify-between px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className={`flex items-center justify-between ${bodyPadding} hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors`}
           >
             <div>
-              <div className="font-semibold text-gray-900 dark:text-gray-100">Email Support</div>
-              <div className="text-[11px] text-gray-500 dark:text-gray-400">queuesis@aplkalex.com</div>
+              <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Email Support</div>
+              <div className="text-[10px] text-gray-500 dark:text-gray-400">queuesis@aplkalex.com</div>
             </div>
             <span className="text-[10px] text-gray-400">↗︎</span>
           </a>
@@ -153,11 +163,11 @@ const BugReportMenu = ({
             href="https://github.com/Aplkalex/Queuesis/issues/new/choose"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-between px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-b-2xl"
+            className={`flex items-center justify-between ${bodyPadding} hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-b-2xl`}
           >
             <div>
-              <div className="font-semibold text-gray-900 dark:text-gray-100">GitHub Issue</div>
-              <div className="text-[11px] text-gray-500 dark:text-gray-400">opens in new tab</div>
+              <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">GitHub Issue</div>
+              <div className="text-[10px] text-gray-500 dark:text-gray-400">opens in new tab</div>
             </div>
             <span className="text-[10px] text-gray-400">↗︎</span>
           </a>
