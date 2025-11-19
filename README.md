@@ -599,7 +599,7 @@ After deployment, verify:
 
 ## 🗺️ Roadmap
 
-- [ ] **Export Features**
+- [x] **Export Features**
   - Export timetable as PNG/PDF
   - Generate ICS calendar files
   - Google Calendar integration

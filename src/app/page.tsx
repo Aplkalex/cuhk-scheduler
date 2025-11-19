@@ -14,10 +14,37 @@ import { generateCourseColor, calculateTotalCredits, detectConflicts, hasAvailab
 import { TIMETABLE_CONFIG, WEEKDAY_SHORT } from '@/lib/constants';
 import { generateSchedules, type GeneratedSchedule } from '@/lib/schedule-generator';
 import { DISCLAIMER } from '@/lib/constants';
-import { Calendar, Book, List, AlertCircle, AlertTriangle, Info, Trash2, X, Hand, Sparkles, ChevronDown, ChevronUp, ChevronRight, Clock, Download, Upload, Menu, RotateCcw, MapPin, /* Coffee, Check, */ FlaskConical, Lock, Unlock, Github } from 'lucide-react';
+import {
+  Calendar,
+  Book,
+  List,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  Trash2,
+  X,
+  Hand,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  Clock,
+  Upload,
+  Menu,
+  MapPin,
+  /* Coffee, Check, */
+  FlaskConical,
+  Lock,
+  Unlock,
+  Github,
+} from 'lucide-react';
 import TermSelector from '@/components/TermSelector';
 import ConflictToast from '@/components/ConflictToast';
 import FullSectionWarningToast, { type FullSectionWarningData } from '@/components/FullSectionWarningToast';
+import { ExportMenu } from '@/components/ExportMenu';
+import { buildScheduleICS, GOOGLE_CALENDAR_IMPORT_URL } from '@/lib/calendar-export';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 
 type SnapshotUndoEntry = {
   previousCourses: SelectedCourse[];
@@ -87,6 +114,7 @@ const PREFERENCE_OPTIONS = [
 ] as const;
 
 type PreferenceId = typeof PREFERENCE_OPTIONS[number]['id'];
+type PreferenceChoice = { id: PreferenceId | null; icon: string; label: string };
 
 
 const formatTermLabel = (label: string) => {
@@ -198,9 +226,14 @@ export default function Home() {
     scheduleMode === 'auto-generate'
       ? selectedCourseCodes.length > 0
       : selectedCourses.length > 0;
+  const hasScheduleEntries = selectedCourses.length > 0;
   
   // Simple preference - only one can be selected at a time
   const [selectedPreference, setSelectedPreference] = useState<PreferenceId | null>(null);
+  const preferenceChoices: PreferenceChoice[] = useMemo(
+    () => [{ id: null, icon: '🎛️', label: 'No preference' }, ...PREFERENCE_OPTIONS],
+    []
+  );
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [preferredDaysOff, setPreferredDaysOff] = useState<DayOfWeek[]>([]);
   const [excludeFullSections, setExcludeFullSections] = useState(false);
@@ -220,12 +253,16 @@ export default function Home() {
   const [isPreferencePickerClosing, setIsPreferencePickerClosing] = useState(false);
   const [isSelectedCoursesSheetOpen, setIsSelectedCoursesSheetOpen] = useState(false);
   const [isSelectedCoursesSheetClosing, setIsSelectedCoursesSheetClosing] = useState(false);
-  const [isPrefPending, startPrefTransition] = useTransition();
+  const [, startPrefTransition] = useTransition();
   const [mobileView, setMobileView] = useState<'courses' | 'timetable'>('courses');
   const showMobileGenerateBar =
     isMobile && scheduleMode === 'auto-generate' && selectedCourseCodes.length > 0;
   const timetableRef = useRef<HTMLDivElement | null>(null);
+  const timetableCaptureRef = useRef<HTMLDivElement | null>(null);
+  const exportSurfaceRef = useRef<HTMLDivElement | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isExportingImage, setIsExportingImage] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -263,7 +300,7 @@ export default function Home() {
       });
     });
     return byDay;
-  }, [selectedCourses]);
+  }, [selectedCourses, isDarkMode]);
 
   const openFullTimetable = useCallback(() => {
     if (isMobile) {
@@ -863,7 +900,7 @@ export default function Home() {
       updateConflicts(next);
       return next;
     });
-  }, [pushUndoEntry, updateConflicts]);
+  }, [pushUndoEntry, updateConflicts, showGenerationNotice]);
 
   // Swap lecture section and automatically assign tutorial
   const handleSwapLectureSection = (courseCode: string, currentLectureId: string, newLectureId: string) => {
@@ -982,7 +1019,7 @@ export default function Home() {
       updateConflicts(next);
       return next;
     });
-  }, [pushUndoEntry, updateConflicts]);
+  }, [pushUndoEntry, showGenerationNotice, updateConflicts]);
 
   // Handle swap warnings
   const handleSwapWarning = useCallback((message: string, type: 'full' | 'conflict') => {
@@ -1063,13 +1100,31 @@ export default function Home() {
     }
   };
 
-  const handleExportSchedule = useCallback(() => {
-    if (selectedCourses.length === 0) {
+  const triggerFileDownload = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  };
+
+  const ensureScheduleForExport = useCallback(() => {
+    if (!hasScheduleEntries) {
       showGenerationNotice({
         title: 'Nothing to export',
         message: 'Add courses to your schedule before exporting.',
         tone: 'warning',
       });
+      return false;
+    }
+    return true;
+  }, [hasScheduleEntries, showGenerationNotice]);
+
+  const handleExportScheduleJson = useCallback(() => {
+    if (!ensureScheduleForExport()) {
       return;
     }
 
@@ -1090,22 +1145,171 @@ export default function Home() {
     };
 
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
     const filename = `cuhk-schedule-${selectedTerm}-${new Date().toISOString().slice(0, 10)}.json`;
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
+    triggerFileDownload(blob, filename);
 
     showGenerationNotice({
       title: 'Schedule exported',
       message: 'Downloaded a JSON copy of your timetable.',
       tone: 'info',
     });
-  }, [selectedCourses, scheduleMode, selectedTerm, showGenerationNotice]);
+  }, [ensureScheduleForExport, scheduleMode, selectedCourses, selectedTerm, showGenerationNotice]);
+
+  const handleExportIcs = useCallback(() => {
+    if (!ensureScheduleForExport()) {
+      return;
+    }
+    try {
+      const { ics, anchorDate, weekCount } = buildScheduleICS(selectedCourses, selectedTerm);
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      const filename = `cuhk-schedule-${selectedTerm}.ics`;
+      triggerFileDownload(blob, filename);
+
+      showGenerationNotice({
+        title: 'ICS calendar ready',
+        message: `Covers ${weekCount} weeks starting ${anchorDate.toLocaleDateString('en-HK', {
+          timeZone: 'Asia/Hong_Kong',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}.`,
+        tone: 'info',
+      });
+    } catch (error) {
+      console.error('ICS export failed', error);
+      showGenerationNotice({
+        title: 'Calendar export failed',
+        message: 'We could not build the ICS file. Please try again.',
+        tone: 'error',
+      });
+    }
+  }, [ensureScheduleForExport, selectedCourses, selectedTerm, showGenerationNotice]);
+
+  const handleExportGoogleCalendar = useCallback(() => {
+    if (!ensureScheduleForExport()) {
+      return;
+    }
+    try {
+      const { ics } = buildScheduleICS(selectedCourses, selectedTerm);
+      const filename = `cuhk-schedule-${selectedTerm}.ics`;
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      triggerFileDownload(blob, filename);
+
+      if (typeof window !== 'undefined') {
+        window.open(GOOGLE_CALENDAR_IMPORT_URL, '_blank', 'noopener');
+      }
+
+      showGenerationNotice({
+        title: 'Import into Google Calendar',
+        message: 'Upload the downloaded ICS file via Google Calendar → Settings → Import.',
+        tone: 'info',
+      });
+    } catch (error) {
+      console.error('Google Calendar export failed', error);
+      showGenerationNotice({
+        title: 'Google Calendar unavailable',
+        message: 'Unable to prepare the ICS package. Please try again later.',
+        tone: 'error',
+      });
+    }
+  }, [ensureScheduleForExport, selectedCourses, selectedTerm, showGenerationNotice]);
+
+  const handleExportPng = useCallback(async () => {
+    if (!ensureScheduleForExport()) {
+      return;
+    }
+    const node = exportSurfaceRef.current ?? timetableCaptureRef.current;
+    if (!node) {
+      showGenerationNotice({
+        title: 'Timetable not ready',
+        message: 'Scroll to your timetable once before exporting.',
+        tone: 'warning',
+      });
+      return;
+    }
+
+    setIsExportingImage(true);
+    try {
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
+        includeQueryParams: true,
+      });
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `cuhk-timetable-${selectedTerm}-${new Date().toISOString().slice(0, 10)}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showGenerationNotice({
+        title: 'PNG ready',
+        message: 'Captured a high-resolution snapshot of your timetable.',
+        tone: 'info',
+      });
+    } catch (error) {
+      console.error('PNG export failed', error);
+      showGenerationNotice({
+        title: 'PNG export failed',
+        message: 'Screenshotting the timetable failed. Try again after reloading.',
+        tone: 'error',
+      });
+    } finally {
+      setIsExportingImage(false);
+    }
+  }, [ensureScheduleForExport, isDarkMode, selectedTerm, showGenerationNotice]);
+
+  const handleExportPdf = useCallback(async () => {
+    if (!ensureScheduleForExport()) {
+      return;
+    }
+    const node = exportSurfaceRef.current ?? timetableCaptureRef.current;
+    if (!node) {
+      showGenerationNotice({
+        title: 'Timetable not ready',
+        message: 'Scroll to your timetable once before exporting.',
+        tone: 'warning',
+      });
+      return;
+    }
+
+    setIsExportingPdf(true);
+    try {
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        pixelRatio: 2.5,
+        backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
+        includeQueryParams: true,
+      });
+
+      const orientation = node.clientWidth >= node.clientHeight ? 'landscape' : 'portrait';
+      const pdf = new jsPDF({
+        orientation,
+        unit: 'px',
+        format: [node.clientWidth, node.clientHeight],
+      });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
+      pdf.save(`cuhk-timetable-${selectedTerm}-${new Date().toISOString().slice(0, 10)}.pdf`);
+
+      showGenerationNotice({
+        title: 'PDF ready',
+        message: 'Downloaded a print-friendly timetable PDF.',
+        tone: 'info',
+      });
+    } catch (error) {
+      console.error('PDF export failed', error);
+      showGenerationNotice({
+        title: 'PDF export failed',
+        message: 'Unable to render the timetable to PDF right now.',
+        tone: 'error',
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }, [ensureScheduleForExport, isDarkMode, selectedTerm, showGenerationNotice]);
 
   const handleImportButtonClick = useCallback(() => {
     importInputRef.current?.click();
@@ -1523,21 +1727,23 @@ export default function Home() {
                   >
                     <Upload className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleExportSchedule}
-                    disabled={selectedCourses.length === 0}
-                    className={`ml-1 inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 ease-out shadow-sm active:scale-95 ${
-                      selectedCourses.length === 0
-                        ? 'bg-gray-100/60 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-white/5 dark:text-gray-500 dark:border-white/10'
-                        : 'bg-gray-100/80 text-green-600 border-gray-200 hover:bg-gray-200/80 hover:border-gray-300 dark:bg-white/5 dark:text-green-400 dark:border-white/10 dark:hover:bg-white/10'
+                  <ExportMenu
+                    isMobile
+                    disabled={!hasScheduleEntries}
+                    onExportJson={handleExportScheduleJson}
+                    onExportPng={handleExportPng}
+                    onExportPdf={handleExportPdf}
+                    onExportIcs={handleExportIcs}
+                    onExportGoogle={handleExportGoogleCalendar}
+                    isExportingImage={isExportingImage}
+                    isExportingPdf={isExportingPdf}
+                    align="right"
+                    triggerClassName={`ml-1 inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 ease-out shadow-sm active:scale-95 ${
+                      hasScheduleEntries
+                        ? 'bg-gray-100/80 text-green-600 border-gray-200 hover:bg-gray-200/80 hover:border-gray-300 dark:bg-white/5 dark:text-green-400 dark:border-white/10 dark:hover:bg-white/10'
+                        : 'bg-gray-100/60 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-white/5 dark:text-gray-500 dark:border-white/10'
                     }`}
-                    title="Export schedule"
-                    aria-label="Export schedule"
-                    aria-disabled={selectedCourses.length === 0}
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                  </button>
+                  />
                 </>
               )}
             </div>
@@ -1726,18 +1932,22 @@ export default function Home() {
                     >
                       <Upload className="w-3 h-3" />
                     </button>
-                    <button
-                      onClick={handleExportSchedule}
-                      disabled={selectedCourses.length === 0}
-                      className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors ${
-                        selectedCourses.length === 0
-                          ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed bg-transparent'
-                          : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
+                    <ExportMenu
+                      disabled={!hasScheduleEntries}
+                      onExportJson={handleExportScheduleJson}
+                      onExportPng={handleExportPng}
+                      onExportPdf={handleExportPdf}
+                      onExportIcs={handleExportIcs}
+                      onExportGoogle={handleExportGoogleCalendar}
+                      isExportingImage={isExportingImage}
+                      isExportingPdf={isExportingPdf}
+                      align="right"
+                      triggerClassName={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                        hasScheduleEntries
+                          ? 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
+                          : 'text-gray-400 dark:text-gray-600 cursor-not-allowed bg-transparent'
                       }`}
-                      title="Export schedule"
-                    >
-                      <Download className="w-3 h-3" />
-                    </button>
+                    />
                     {selectedCourses.length > 0 && (
                       <button
                         onClick={handleClearSchedule}
@@ -2310,19 +2520,21 @@ export default function Home() {
             {/* Timetable - Scrollable area */}
             <div ref={timetableRef} className={`flex-1 overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-purple-400 dark:scrollbar-thumb-purple-600 scrollbar-track-transparent min-h-0 ${isMobile ? 'pb-44' : ''}`}>
               {selectedCourses.length > 0 ? (
-                <TimetableGrid
-                  selectedCourses={selectedCourses}
-                  onCourseClick={handleCourseClick}
-                  onRemoveCourse={handleCourseClickRemove}
-                  onLocationClick={handleLocationClick}
-                  conflictingCourses={conflictingCourses}
-                  enableDragDrop={true}
-                  onSwapLectures={handleSwapLectureSection}
-                  onSwapTutorials={handleSwapTutorialSection}
-                  availableCourses={availableCourses}
-                  onSwapWarning={handleSwapWarning}
-                  appearance={timetableAppearance}
-                />
+                <div ref={timetableCaptureRef}>
+                  <TimetableGrid
+                    selectedCourses={selectedCourses}
+                    onCourseClick={handleCourseClick}
+                    onRemoveCourse={handleCourseClickRemove}
+                    onLocationClick={handleLocationClick}
+                    conflictingCourses={conflictingCourses}
+                    enableDragDrop={true}
+                    onSwapLectures={handleSwapLectureSection}
+                    onSwapTutorials={handleSwapTutorialSection}
+                    availableCourses={availableCourses}
+                    onSwapWarning={handleSwapWarning}
+                    appearance={timetableAppearance}
+                  />
+                </div>
               ) : (
                 <div className={`${emptyTimetableClassName} rounded-xl shadow-lg p-8 lg:p-12 text-center transition-colors`}>
                   <Calendar className="w-12 h-12 lg:w-16 lg:h-16 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
@@ -2338,6 +2550,24 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* Hidden export surface for consistent PNG/PDF captures */}
+      <div className="fixed top-0 left-[-200vw] pointer-events-none z-[-1]" aria-hidden="true">
+        {hasScheduleEntries && (
+          <div
+            ref={exportSurfaceRef}
+            className={`w-[1200px] p-6 rounded-3xl shadow-2xl ${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-white'}`}
+          >
+            <TimetableGrid
+              selectedCourses={selectedCourses}
+              conflictingCourses={conflictingCourses}
+              enableDragDrop={false}
+              appearance={timetableAppearance}
+              forceDesktopLayout
+            />
+          </div>
+        )}
+      </div>
 
       {/* Sticky Generate Bar (Mobile) - courses view only */}
       {showMobileGenerateBar && isMobile && mobileView === 'courses' && (
@@ -2850,27 +3080,25 @@ export default function Home() {
 
             {/* Preference grid (replaces plain select) */}
             <div className="grid grid-cols-2 gap-2">
-              {([{id: null as PreferenceId | null, icon: '🎛️', label: 'No preference'}] as const)
-                .concat(PREFERENCE_OPTIONS as any)
-                .map((opt: any) => {
-                  const active = selectedPreference === opt.id || (opt.id === null && selectedPreference === null);
-                  return (
-                    <button
-                      key={`${opt.id ?? 'none'}`}
-                      type="button"
-                      onClick={() => startPrefTransition(() => setSelectedPreference(opt.id))}
-                      aria-pressed={active}
-                      className={`flex items-center gap-2 px-3 py-3 rounded-xl border transition-all text-sm transform-gpu ${
-                        active
-                          ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-500/25'
-                          : 'bg-white/70 dark:bg-[#1e1e1e]/70 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-white/80 dark:hover:bg-[#252526]'
-                      }`}
-                    >
-                      <span className="text-base">{opt.icon}</span>
-                      <span className="font-semibold">{opt.label}</span>
-                    </button>
-                  );
-                })}
+              {preferenceChoices.map((opt) => {
+                const active = selectedPreference === opt.id || (opt.id === null && selectedPreference === null);
+                return (
+                  <button
+                    key={`${opt.id ?? 'none'}`}
+                    type="button"
+                    onClick={() => startPrefTransition(() => setSelectedPreference(opt.id))}
+                    aria-pressed={active}
+                    className={`flex items-center gap-2 px-3 py-3 rounded-xl border transition-all text-sm transform-gpu ${
+                      active
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-500/25'
+                        : 'bg-white/70 dark:bg-[#1e1e1e]/70 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-white/80 dark:hover:bg-[#252526]'
+                    }`}
+                  >
+                    <span className="text-base">{opt.icon}</span>
+                    <span className="font-semibold">{opt.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="flex items-center justify-between mt-2 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3">

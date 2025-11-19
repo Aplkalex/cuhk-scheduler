@@ -19,9 +19,9 @@ export function BuildingReference({ onBuildingClick, renderTrigger, className }:
 
   useEffect(() => {
     // Use document.body as portal target on the client to escape any transformed ancestors
-    if (typeof document !== 'undefined') {
-      setPortalEl(document.body);
-    }
+    if (typeof document === 'undefined') return;
+    const id = requestAnimationFrame(() => setPortalEl(document.body));
+    return () => cancelAnimationFrame(id);
   }, []);
 
   const filteredBuildings = searchQuery 

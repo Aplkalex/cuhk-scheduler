@@ -32,7 +32,9 @@ export function TermSelector({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
-    if (typeof document !== 'undefined') setPortalEl(document.body);
+    if (typeof document === 'undefined') return;
+    const id = requestAnimationFrame(() => setPortalEl(document.body));
+    return () => cancelAnimationFrame(id);
   }, []);
 
   const updatePosition = () => {
@@ -162,4 +164,3 @@ export function TermSelector({
 }
 
 export default TermSelector;
-

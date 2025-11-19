@@ -34,6 +34,7 @@ interface TimetableGridProps {
   availableCourses?: Course[]; // All available courses for showing alternatives
   onSwapWarning?: (message: string, type: 'full' | 'conflict') => void; // Callback for swap warnings
   appearance?: 'frosted' | 'modern';
+  forceDesktopLayout?: boolean;
 }
 
 const DEFAULT_COURSE_COLOR = '#8B5CF6';
@@ -258,12 +259,15 @@ export function TimetableGrid({
   availableCourses = [],
   onSwapWarning,
   appearance = 'modern',
+  forceDesktopLayout = false,
 }: TimetableGridProps) {
   const [draggedCourse, setDraggedCourse] = useState<SelectedCourse | null>(null);
   const [, startTransition] = useTransition();
   const { startHour, endHour } = TIMETABLE_CONFIG;
   // Compact mobile sizing: adjust per-hour height and time-column width
-  const isSmallScreen = typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)').matches : false;
+  const isSmallScreen = forceDesktopLayout
+    ? false
+    : (typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)').matches : false);
   const baseSlotHeight = TIMETABLE_CONFIG.slotHeight;
   const slotHeight = isSmallScreen ? baseSlotHeight * 1.35 : baseSlotHeight;
   const OVERLAP_GAP = isSmallScreen ? 6 : DEFAULT_OVERLAP_GAP;
@@ -388,12 +392,12 @@ export function TimetableGrid({
       const body = document.body as HTMLBodyElement;
       prevBodyStyleRef.current = {
         overflow: body.style.overflow,
-        touchAction: (body.style as any).touchAction,
-        overscrollBehavior: (body.style as any).overscrollBehavior,
+        touchAction: body.style.touchAction,
+        overscrollBehavior: body.style.overscrollBehavior,
       };
       body.style.overflow = 'hidden';
-      (body.style as any).touchAction = 'none';
-      (body.style as any).overscrollBehavior = 'contain';
+      body.style.touchAction = 'none';
+      body.style.overscrollBehavior = 'contain';
     }
   };
 
@@ -441,8 +445,8 @@ export function TimetableGrid({
     if (typeof document !== 'undefined' && prevBodyStyleRef.current) {
       const body = document.body as HTMLBodyElement;
       body.style.overflow = prevBodyStyleRef.current.overflow ?? '';
-      (body.style as any).touchAction = prevBodyStyleRef.current.touchAction ?? '';
-      (body.style as any).overscrollBehavior = prevBodyStyleRef.current.overscrollBehavior ?? '';
+      body.style.touchAction = prevBodyStyleRef.current.touchAction ?? '';
+      body.style.overscrollBehavior = prevBodyStyleRef.current.overscrollBehavior ?? '';
       prevBodyStyleRef.current = null;
     }
 
@@ -500,8 +504,8 @@ export function TimetableGrid({
     if (typeof document !== 'undefined' && prevBodyStyleRef.current) {
       const body = document.body as HTMLBodyElement;
       body.style.overflow = prevBodyStyleRef.current.overflow ?? '';
-      (body.style as any).touchAction = prevBodyStyleRef.current.touchAction ?? '';
-      (body.style as any).overscrollBehavior = prevBodyStyleRef.current.overscrollBehavior ?? '';
+      body.style.touchAction = prevBodyStyleRef.current.touchAction ?? '';
+      body.style.overscrollBehavior = prevBodyStyleRef.current.overscrollBehavior ?? '';
       prevBodyStyleRef.current = null;
     }
   };
@@ -1153,41 +1157,40 @@ export function TimetableGrid({
                   return laidOut.map((entry) => {
                     const style = getCourseStyle(entry.slot.startTime, entry.slot.endTime, entry.selectedCourse.color);
                     const widthPercent = 100 / entry.overlapCount;
-                    style.width = `calc(${widthPercent}% - ${OVERLAP_GAP}px)`;
-                    style.left = `calc(${widthPercent * entry.lane}% + ${OVERLAP_GAP / 2}px)`;
+                    const courseStyle: CourseStyle = {
+                      ...style,
+                      width: `calc(${widthPercent}% - ${OVERLAP_GAP}px)`,
+                      left: `calc(${widthPercent * entry.lane}% + ${OVERLAP_GAP / 2}px)`,
+                    };
 
-                      // Wrapper to host the course block and a sibling floating delete button overlay.
-                      const innerStyle = { ...style, top: 0, left: 0, width: '100%' } as CourseStyle;
-                      const wrapperStyle = {
-                        top: (style as any).top,
-                        left: (style as any).left,
-                        height: (style as any).height,
-                        width: (style as any).width,
-                      } as CSSProperties;
-                      return (
-                        <div key={entry.key} className="absolute group" style={wrapperStyle}>
-                          <DraggableCourseBlock
-                            selectedCourse={entry.selectedCourse}
-                            blockId={entry.key}
-                            style={innerStyle}
-                            slot={entry.slot}
-                            isCompactWidth={entry.overlapCount >= 2}
-                            overlapCount={entry.overlapCount}
-                          />
-                          {onRemoveCourse && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onRemoveCourse(entry.selectedCourse);
-                              }}
-                              className="hidden sm:flex absolute top-0 right-0 translate-x-[55%] -translate-y-[55%] w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white items-center justify-center shadow-[0_10px_14px_rgba(0,0,0,0.35)] z-[200000] opacity-0 group-hover:opacity-100 scale-0 group-hover:scale-100 transition-transform"
-                              title="Remove course"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      );
+                    const { top, left, height, width, ...restStyle } = courseStyle;
+                    const wrapperStyle: CSSProperties = { top, left, height, width, position: 'absolute' };
+                    const innerStyle: CourseStyle = { ...restStyle, top: 0, left: 0, width: '100%' };
+
+                    return (
+                      <div key={entry.key} className="absolute group" style={wrapperStyle}>
+                        <DraggableCourseBlock
+                          selectedCourse={entry.selectedCourse}
+                          blockId={entry.key}
+                          style={innerStyle}
+                          slot={entry.slot}
+                          isCompactWidth={entry.overlapCount >= 2}
+                          overlapCount={entry.overlapCount}
+                        />
+                        {onRemoveCourse && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveCourse(entry.selectedCourse);
+                            }}
+                            className="hidden sm:flex absolute top-0 right-0 translate-x-[55%] -translate-y-[55%] w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white items-center justify-center shadow-[0_10px_14px_rgba(0,0,0,0.35)] z-[200000] opacity-0 group-hover:opacity-100 scale-0 group-hover:scale-100 transition-transform"
+                            title="Remove course"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    );
                   });
                 })()}
 
@@ -1271,9 +1274,9 @@ export function TimetableGrid({
                       end: g.end,
                       isGhost: true,
                     })),
-                  ]);
+                  ]) as Array<SlotLayoutOutput & { isGhost?: boolean }>;
 
-                  return laidOut.filter((entry: any) => entry.isGhost).map((entry) => {
+                  return laidOut.filter((entry) => entry.isGhost).map((entry) => {
                     const baseStyle = getCourseStyle(entry.slot.startTime, entry.slot.endTime, draggedCourse.color ?? DEFAULT_COURSE_COLOR);
                     const widthPercent = 100 / entry.overlapCount;
                     const styleOverride: Partial<CourseStyle> = {
