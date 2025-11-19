@@ -84,7 +84,7 @@ export function ExportMenu({
     left: 0,
     width: 288,
   });
-  const MENU_WIDTH = 288;
+  const MENU_WIDTH = _isMobile ? 276 : 288;
 
   const closeMenu = useCallback(() => setOpen(false), []);
 
@@ -104,7 +104,7 @@ export function ExportMenu({
       : Math.max(8, Math.min(rect.left, window.innerWidth - MENU_WIDTH - 8));
     const top = rect.bottom + scrollY + 8;
     setMenuStyle({ top, left: left + scrollX, width: MENU_WIDTH });
-  }, [align]);
+  }, [align, MENU_WIDTH]);
 
   useEffect(() => {
     if (!open) return;

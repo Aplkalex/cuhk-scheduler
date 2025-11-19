@@ -372,7 +372,7 @@ export function TimetableGrid({
       boxShadow: 'none',
       backdropFilter: isFrosted ? 'blur(22px)' : 'none',
       WebkitBackdropFilter: isFrosted ? 'blur(22px)' : 'none',
-      color: palette.text,
+      color: 'rgba(255, 255, 255, 0.97)',
       textShadow: isFrosted ? palette.textShadow : 'none',
     };
 
@@ -548,18 +548,22 @@ export function TimetableGrid({
     const style = getCourseStyle(slot.startTime, slot.endTime, color);
     const palette = buildGlassPalette(color);
 
+    const ghostBackgroundBase = isFrosted ? palette.surface : palette.surfaceActive;
+    const ghostHoverBackground = isFrosted ? palette.surfaceActive : palette.surfaceActive;
     const ghostStyle: CourseStyle = {
       ...style,
       ...(styleOverride ?? {}),
       borderStyle: 'dashed',
-      borderColor: palette.borderSoft,
-      backgroundColor: isOver ? palette.surfaceActive : palette.surfaceSubtle,
-      boxShadow: 'none',
-      opacity: isOver ? 1 : 0.94,
+      borderColor: isOver ? palette.border : palette.borderSoft,
+      backgroundColor: isOver ? ghostHoverBackground : ghostBackgroundBase,
+      boxShadow: isDarkMode
+        ? '0 18px 30px -22px rgba(0, 0, 0, 0.7)'
+        : '0 32px 60px -34px rgba(30, 41, 59, 0.32)',
+      opacity: isOver ? 1 : 0.9,
       transition: isOver
         ? 'all 0.25s ease-out'
         : 'transform 0.2s ease-out, box-shadow 0.2s ease-out, opacity 0.2s ease-out',
-      color: palette.text,
+      color: 'rgba(255, 255, 255, 0.97)',
       // Ensure ghost targets sit above real blocks so they remain droppable
       zIndex: 300,
     };
