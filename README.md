@@ -36,15 +36,37 @@
 
 <br/><br/>
 
-## 📸 Screenshots
+## 🎥 Video Showcase
+https://github.com/user-attachments/assets/df3b80b8-a84c-4f9e-ac58-7627dfefda06
 
+
+
+<br/>
+
+## 📸 Interface
 <div align="center">
+  <img width="48%" alt="Dark Mode Interface" src="https://github.com/user-attachments/assets/d34964c4-98fa-433b-b382-8d836b50ed5d" />
+  <img width="48%" alt="Light Mode Interface" src="https://github.com/user-attachments/assets/12b5feec-9819-4e4e-ac8e-89b60f42cd02" />
+</div>
 
-### Main Timetable Interface (Dark mode)
-<img width="3020" height="1712" alt="SCR-20251117-cvrt-modified (1)" src="https://github.com/user-attachments/assets/fd5a2e18-1637-42a4-a5ce-e3ebab5d3996" />
+<br/>
 
-### Main Timetable Interface (Light mode)
-<img width="3024" height="1714" alt="SCR-20251117-cwbe-modified" src="https://github.com/user-attachments/assets/d81da19c-f2b2-4ee7-ab44-a1e334e97f21" />
+## 🚀 Interactive Features
+
+| Feature | Preview |
+| :--- | :--- |
+| **🔍 Instant Search**<br><br>Real-time filtering allows you to find and add courses to your planning list instantly. | <img src="https://github.com/user-attachments/assets/02798f7c-125e-4547-99b4-0cbac5c4673d" width="100%" /> |
+| **🖱️ Drag & Drop**<br><br>Fully interactive interface. Easily move courses around; snap-to-grid ensures valid scheduling. | <img src="https://github.com/user-attachments/assets/d88658ad-404a-415b-a08a-f56cf16e2d80" width="400" /> |
+| **🤖 Smart Auto-Plan**<br><br>One-click algorithm that generates the optimal schedule based on your course list. | <img src="https://github.com/user-attachments/assets/4e6247ef-27bb-4a7f-acf4-908f0a218df3" width="100%" /> |
+
+<br/>
+
+## 🛠️ Controls & Utilities
+
+| Feature | Preview |
+| :--- | :--- |
+| **🔒 Feature Lock**<br><br>Pin courses in place to prevent the auto-planner from moving them during regeneration. | <img src="https://github.com/user-attachments/assets/f1dd6574-3edd-498b-9cb1-c1118ae885a0" width="100%" /> |
+| **📤 Export & Reset**<br><br>Export to `.ics` / Image, or perform a bulk delete to reset your workspace. | <img src="https://github.com/user-attachments/assets/b2fdcffb-f062-48ad-b213-2ea8cf6e6b25" width="100%" /> |
 
 </div>
 
