@@ -549,8 +549,8 @@ export function TimetableGrid({
     const paletteColor = adjustCourseColorForTheme(color, isDarkMode ? 'dark' : 'light');
     const palette = buildGlassPalette(paletteColor);
 
-    const ghostBackgroundBase = isFrosted ? palette.surface : palette.surfaceActive;
-    const ghostHoverBackground = isFrosted ? palette.surfaceActive : palette.surfaceActive;
+    const ghostBackgroundBase = isFrosted ? palette.surface : palette.surface;
+    const ghostHoverBackground = palette.surfaceActive;
     const ghostStyle: CourseStyle = {
       ...style,
       ...(styleOverride ?? {}),
@@ -571,30 +571,47 @@ export function TimetableGrid({
 
     ghostStyle['--course-glow'] = palette.glow;
 
+    const { top, left, height, width, ...restStyle } = ghostStyle;
+    const wrapperStyle: CSSProperties = {
+      top,
+      left,
+      height,
+      width,
+      position: 'absolute',
+    };
+    const innerStyle: CourseStyle = {
+      ...restStyle,
+      top: 0,
+      left: 0,
+      width: '100%',
+    };
+
     return (
-      <div
-        ref={setNodeRef}
-        className={cn(
-          ghostBlockBaseClass,
-          'border-dashed',
-          isOver && 'scale-[1.05]',
-          !isOver && 'hover:scale-[1.02]',
-        )}
-        style={ghostStyle}
-      >
-        <div className="text-xs font-bold text-center">
-          {section.sectionType === 'Lecture' ? 'LEC' : section.sectionType.toUpperCase()} {section.sectionId}
+      <div style={wrapperStyle}>
+        <div
+          ref={setNodeRef}
+          className={cn(
+            ghostBlockBaseClass,
+            'border-dashed',
+            isOver && 'scale-[1.02]',
+            !isOver && 'hover:scale-[1.01]'
+          )}
+          style={innerStyle}
+        >
+          <div className="text-xs font-bold text-center">
+            {section.sectionType === 'Lecture' ? 'LEC' : section.sectionType.toUpperCase()} {section.sectionId}
+          </div>
+          {section.instructor && (
+            <div className="text-[9px] text-center truncate max-w-full opacity-90">
+              {formatInstructorDisplayName(section.instructor.name)}
+            </div>
+          )}
+          {isOver && (
+            <div className="text-[10px] font-semibold mt-0.5 text-yellow-100/90">
+              ↓ Drop here
+            </div>
+          )}
         </div>
-        {section.instructor && (
-          <div className="text-[9px] text-center truncate max-w-full opacity-90">
-            {formatInstructorDisplayName(section.instructor.name)}
-          </div>
-        )}
-        {isOver && (
-          <div className="text-[10px] font-semibold mt-0.5 text-yellow-100/90">
-            ↓ Drop here
-          </div>
-        )}
       </div>
     );
   });
