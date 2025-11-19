@@ -546,7 +546,8 @@ export function TimetableGrid({
     });
 
     const style = getCourseStyle(slot.startTime, slot.endTime, color);
-    const palette = buildGlassPalette(color);
+    const paletteColor = adjustCourseColorForTheme(color, isDarkMode ? 'dark' : 'light');
+    const palette = buildGlassPalette(paletteColor);
 
     const ghostBackgroundBase = isFrosted ? palette.surface : palette.surfaceActive;
     const ghostHoverBackground = isFrosted ? palette.surfaceActive : palette.surfaceActive;
