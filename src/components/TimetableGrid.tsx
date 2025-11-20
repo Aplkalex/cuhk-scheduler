@@ -894,6 +894,15 @@ export function TimetableGrid({
       return false;
     })();
 
+    const conflictLayerBase = 12;
+    const conflictLayerRange = Math.max(0, 8 - Math.floor(durationMinutes / 15));
+    const conflictZIndex = conflictLayerBase + conflictLayerRange;
+    const blockZIndex = hasConflict
+      ? isLocalHovered
+        ? 40
+        : conflictZIndex
+      : 1;
+
     return (
       <div
         ref={(node) => {
@@ -927,12 +936,7 @@ export function TimetableGrid({
           borderColor: statusBorderColor,
           borderWidth: '1px',
           boxShadow: statusHighlightColor ? `0 0 0 2px ${statusHighlightColor}` : undefined,
-          zIndex:
-            isLocalHovered && hasConflict
-              ? 200
-              : hasConflict
-                ? Math.max(10, 100 - Math.floor(durationMinutes / 10))
-                : 1,
+          zIndex: blockZIndex,
           opacity: isDragging ? 0 : hasConflict ? (isLocalHovered ? 1 : 0.85) : 1,
           pointerEvents: isDragging ? 'none' : undefined,
           filter: selectedCourse.locked
