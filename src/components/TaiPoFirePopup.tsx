@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, ExternalLink, Phone, MapPin, Heart, Battery, Dog, Home, AlertTriangle, Users, Car, Stethoscope, Package } from "lucide-react";
+import { X, ExternalLink, Phone, MapPin, Heart, Battery, Dog, Home, AlertTriangle, Users, Car, Stethoscope, Package, Info, Globe, MessageCircle } from "lucide-react";
 
 export default function TaiPoFirePopup() {
     const [isOpen, setIsOpen] = useState(false);
@@ -65,26 +65,85 @@ export default function TaiPoFirePopup() {
                 {/* Body */}
                 <div className="p-6 space-y-8">
 
+                    {/* Critical: Body Identification */}
+                    <div className="bg-gray-900 text-white rounded-xl p-6 border-2 border-red-500 shadow-lg animate-pulse-slow">
+                        <h3 className="font-bold text-xl mb-4 flex items-center gap-2 text-red-400">
+                            <AlertTriangle className="w-6 h-6" /> 認領屍體程序 Body Identification Procedure
+                        </h3>
+                        <div className="space-y-3">
+                            <div className="font-bold text-lg">地點 Location: 大埔廣福社區會堂 Tai Po Kwong Fuk Community Hall</div>
+                            <div>地址 Address: 香港大埔廣宏街 Kwong Wang Street, Tai Po</div>
+                            <div className="flex items-center gap-2">
+                                <span className="bg-red-600 px-2 py-0.5 rounded text-sm font-bold">時間 Time</span>
+                                <span className="font-mono text-lg">15:00 - 23:00</span>
+                            </div>
+                            <div className="p-3 bg-white/10 rounded-lg border border-white/20">
+                                <p className="font-bold text-yellow-400 mb-1">⚠️ 注意 Attention:</p>
+                                <p>煩請家屬帶齊身分證明文件去登記</p>
+                                <p className="text-sm opacity-80">Family members please bring identification documents for registration.</p>
+                            </div>
+                            <div className="text-sm text-gray-400 mt-2">
+                                消息來源 Source: <a href="tel:1878999" className="underline hover:text-white">1878 999</a> (警方熱線 Police Hotline)
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Unified Platform */}
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-4">
+                        <h3 className="font-bold text-indigo-800 dark:text-indigo-300 mb-3 flex items-center gap-2 text-lg">
+                            <Globe className="w-5 h-5" /> 出/收物資統一資訊平台 Unified Supplies Platform
+                        </h3>
+                        <a href="https://wangfuk-fire-sos.netlify.app/" target="_blank" className="block w-full text-center p-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-colors shadow-md mb-4">
+                            🕸️ 進入平台 Enter Platform
+                        </a>
+
+                        <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                            <div className="bg-white dark:bg-zinc-800 p-3 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+                                <div className="font-bold text-indigo-700 dark:text-indigo-400 mb-1">👥 線下人手 Offline Manpower</div>
+                                <p className="text-gray-600 dark:text-gray-300">廣傳此訊息，將各 Group 的物資訊息投稿入平台。</p>
+                                <p className="text-xs text-gray-400 mt-1">Spread this msg, submit supplies info from groups to the platform.</p>
+                            </div>
+                            <div className="bg-white dark:bg-zinc-800 p-3 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+                                <div className="font-bold text-indigo-700 dark:text-indigo-400 mb-1">💻 Web App Developers</div>
+                                <p className="text-gray-600 dark:text-gray-300">考慮加個欄位公佈「停收物資」的站頭，避免過剩。</p>
+                                <p className="text-xs text-gray-400 mt-1">Consider adding a field for stations "stopping collection" to avoid surplus.</p>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Must Read / Lazy Pack */}
                     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 rounded-xl p-4">
                         <h3 className="font-bold text-amber-800 dark:text-amber-300 mb-3 flex items-center gap-2 text-lg">
-                            <AlertTriangle className="w-5 h-5" /> ‼️必讀注意事項‼️ Must Read / Lazy Pack
+                            <Info className="w-5 h-5" /> ‼️必讀注意事項‼️ Must Read / Lazy Pack
                         </h3>
                         <div className="grid sm:grid-cols-2 gap-3">
-                            <a href="https://t.me/c/3321153175/11852" target="_blank" className="flex items-center gap-2 p-3 bg-white dark:bg-zinc-800 rounded-lg border border-amber-200 dark:border-amber-900/50 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors group">
+                            <a href="https://t.me/Taipohelper" target="_blank" className="flex items-center gap-2 p-3 bg-white dark:bg-zinc-800 rounded-lg border border-amber-200 dark:border-amber-900/50 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors group">
                                 <span className="text-2xl">🔻</span>
                                 <div>
-                                    <div className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-amber-700 dark:group-hover:text-amber-400">物資救援組流程</div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">Logistics Flow (Must Read)</div>
+                                    <div className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-amber-700 dark:group-hover:text-amber-400">查詢最新狀況 (睇Pin)</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">Latest Status (Check Pin Msg)</div>
                                 </div>
                             </a>
                             <a href="https://t.me/universalsentinelsinblack" target="_blank" className="flex items-center gap-2 p-3 bg-white dark:bg-zinc-800 rounded-lg border border-amber-200 dark:border-amber-900/50 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors group">
-                                <span className="text-2xl">🔻</span>
+                                <span className="text-2xl">⏰</span>
                                 <div>
-                                    <div className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-amber-700 dark:group-hover:text-amber-400">主要消息發放頻道</div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">Main Info Channel (Updates)</div>
+                                    <div className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-amber-700 dark:group-hover:text-amber-400">最近物資需求 List</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">Latest Supplies Demand List</div>
                                 </div>
                             </a>
+                        </div>
+                    </div>
+
+                    {/* Supplies Status Warning */}
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 rounded-xl p-4 text-center">
+                        <h3 className="text-lg font-bold text-green-800 dark:text-green-300 mb-1 flex items-center justify-center gap-2">
+                            <AlertTriangle className="w-5 h-5" /> 🚨 物資同人都大致足夠 🚨
+                        </h3>
+                        <p className="font-medium text-green-700 dark:text-green-400">Supplies & Manpower Sufficient</p>
+                        <div className="mt-2 text-sm text-green-600 dark:text-green-500 space-y-1">
+                            <p>除非各站經物資組特別要求，否則默認該站已滿！</p>
+                            <p>Unless specifically requested, assume stations are full!</p>
+                            <p className="font-bold">🚨 只做調動 Only Reallocation 🚨</p>
                         </div>
                     </div>
 
@@ -93,7 +152,18 @@ export default function TaiPoFirePopup() {
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                             <Users className="w-5 h-5 text-purple-500" /> 義工及物資 Volunteer & Logistics
                         </h3>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                        {/* Specific Groups List */}
+                        <div className="mb-4 grid sm:grid-cols-2 gap-3">
+                            <GroupCard icon={<Package className="w-4 h-4" />} title="大埔救援 大組 (TG)" subtitle="Main Rescue Group" link="https://t.me/+7PObuQ5xWiI2ZGFl" />
+                            <GroupCard icon={<Car className="w-4 h-4" />} title="大埔救援 外區支援 (TG)" subtitle="Outside Area Support" link="https://t.me/+eZU1LSsOI9w0YjE9" />
+                            <GroupCard icon={<Heart className="w-4 h-4" />} title="大埔救援 保暖物資 (TG)" subtitle="Warm Supplies" link="https://t.me/+rD2pJFnFnBswNjhl" />
+                            <GroupCard icon={<Package className="w-4 h-4" />} title="大埔救援 食物飲品 (TG)" subtitle="Food & Drinks" link="https://t.me/+KbJF_gjyBAUzMzJl" />
+                            <GroupCard icon={<MessageCircle className="w-4 h-4" />} title="時事人資訊及救援 (WTS)" subtitle="Info & Rescue (WhatsApp)" link="https://chat.whatsapp.com/GzrflPOshLsLRxEVfXMTbE?mode=wwt" />
+                            <GroupCard icon={<MessageCircle className="w-4 h-4" />} title="大埔義工最新資訊 (WTS)" subtitle="Volunteer Info (WhatsApp)" link="https://chat.whatsapp.com/Jo5JEBq24JRCNMJQCnenih" />
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-gray-200 dark:border-gray-700 pt-4">
                             <GroupCard icon={<Users className="w-4 h-4" />} title="義工 Group" subtitle="Volunteer Group" link="https://t.me/taipomanpower" />
                             <GroupCard icon={<ExternalLink className="w-4 h-4" />} title="義工報名 Link" subtitle="Volunteer Registration" link="https://taipo1126.com/volunteer/tasks" />
                             <GroupCard icon={<Users className="w-4 h-4" />} title="1300 自發集結" subtitle="1300 Gathering" link="https://t.me/+yrBO_JX9PD1kMWM1" />
@@ -206,6 +276,7 @@ export default function TaiPoFirePopup() {
                             <Dog className="w-5 h-5 text-amber-500" /> 寵物支援 Pet Support
                         </h3>
                         <div className="grid sm:grid-cols-2 gap-4">
+                            <GroupCard icon={<Dog className="w-4 h-4" />} title="寵物資料相關 Group" subtitle="Pet Data Group" link="https://t.me/+CVkWQ-tOWSg4MzA9" />
                             <ContactCard title="香港寵物會 HK Pet Club" desc="救護車 Standby Ambulance" phone="9782 2999" />
                             <ContactCard title="阿棍屋 House of Joy & Mercy" desc="" phone="9738 7272" />
                             <ContactCard title="唯珍牽 Regina Paws" desc="狗隻暫托 Dog Foster" phone="5408 9929" />
