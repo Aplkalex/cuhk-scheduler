@@ -65,6 +65,24 @@ export default function TaiPoFirePopup() {
                 {/* Body */}
                 <div className="p-6 space-y-8">
 
+                    {/* Real-time Map Initiative */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4">
+                        <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2 text-lg">
+                            <MapPin className="w-5 h-5" /> Real-time Supply Map Initiative
+                        </h3>
+                        <div className="text-gray-700 dark:text-gray-300 mb-3 text-sm leading-relaxed space-y-2">
+                            <p>
+                                Supplies at Tai Po (Kwong Fuk Estate) are currently abundant but lack management. Local Hong Kongers are building a &apos;Real-time Map&apos; App to track inventory and needs at each station to prevent uneven distribution.
+                            </p>
+                            <p className="border-t border-blue-200 dark:border-blue-800/50 pt-2 mt-2">
+                                目前大埔（廣福邨）物資充足但缺乏管理。有香港人正建立「即時地圖」App，以追蹤各站物資庫存及需求，避免資源分配不均。
+                            </p>
+                        </div>
+                        <a href="https://supporttaipohk.com" target="_blank" className="block w-full text-center p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow-sm">
+                            🚀 Support the Initiative (supporttaipohk.com)
+                        </a>
+                    </div>
+
                     {/* Unified Platform */}
                     <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-4">
                         <h3 className="font-bold text-indigo-800 dark:text-indigo-300 mb-3 flex items-center gap-2 text-lg">
