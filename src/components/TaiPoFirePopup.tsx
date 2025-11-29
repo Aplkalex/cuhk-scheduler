@@ -43,7 +43,7 @@ export default function TaiPoFirePopup() {
                                 <AlertTriangle className="w-4 h-4" />
                                 URGENT
                             </span>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Nov 28</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Nov 29</span>
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                             <span>請關注大埔宏福苑火警</span>
