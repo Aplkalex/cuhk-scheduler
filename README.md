@@ -1,6 +1,6 @@
 <div align="center">
   
-# Queuesis — CUHK Timetable Planner
+# Queuesis - CUHK Timetable Planner
 
 **A modern course-queueing experience built to fix everything CUSIS didn’t.**
 
