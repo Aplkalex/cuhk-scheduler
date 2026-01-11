@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
 import { Search, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -8,16 +9,58 @@ interface SearchBarProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  /** Debounce delay in ms (default: 150) */
+  debounceMs?: number;
 }
 
-export function SearchBar({ value, onChange, placeholder, className }: SearchBarProps) {
+export function SearchBar({ value, onChange, placeholder, className, debounceMs = 150 }: SearchBarProps) {
+  // Local state for immediate UI feedback
+  const [localValue, setLocalValue] = useState(value);
+  const [isPending, startTransition] = useTransition();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync local value when external value changes (e.g., from clear button)
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = useCallback((newValue: string) => {
+    // Update local state immediately for responsive UI
+    setLocalValue(newValue);
+    
+    // Clear any pending debounce
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    // Debounce the expensive filtering operation
+    debounceRef.current = setTimeout(() => {
+      // Use startTransition to mark the filtering as non-urgent
+      startTransition(() => {
+        onChange(newValue);
+      });
+    }, debounceMs);
+  }, [onChange, debounceMs]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className={cn('relative', className)}>
-      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+      <Search className={cn(
+        "absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors",
+        isPending ? "text-purple-400 dark:text-purple-500" : "text-gray-400 dark:text-gray-500"
+      )} />
       <input
         type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={localValue}
+        onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder || 'Search courses by code, name, or instructor...'}
         className={cn(
           'w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700',

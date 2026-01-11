@@ -8,6 +8,13 @@
 import { Course, Section, SelectedCourse, TimeSlot, /* DayOfWeek */ } from '@/types';
 import { timeSlotsOverlap, hasAvailableSeats } from './schedule-utils';
 
+// Only log in development mode to avoid performance overhead in production
+const IS_DEV = process.env.NODE_ENV === 'development';
+const debugLog = IS_DEV ? console.log.bind(console) : () => {};
+const debugTime = IS_DEV ? console.time.bind(console) : () => {};
+const debugTimeEnd = IS_DEV ? console.timeEnd.bind(console) : () => {};
+const debugWarn = IS_DEV ? console.warn.bind(console) : () => {};
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -77,21 +84,21 @@ function validateCourses(courses: Course[]): void {
   for (const course of courses) {
     // Check if course has sections
     if (!course.sections || course.sections.length === 0) {
-      console.warn(`Course ${course.courseCode} has no sections`);
+      debugWarn(`Course ${course.courseCode} has no sections`);
       continue;
     }
 
     // Check if course has at least one lecture
     const lectures = course.sections.filter(s => s.sectionType === 'Lecture');
     if (lectures.length === 0) {
-      console.warn(`Course ${course.courseCode} has no lecture sections`);
+      debugWarn(`Course ${course.courseCode} has no lecture sections`);
     }
 
     // Validate each section
     for (const section of course.sections) {
       // Check for empty time slots
       if (!section.timeSlots || section.timeSlots.length === 0) {
-        console.warn(
+        debugWarn(
           `Course ${course.courseCode}, Section ${section.sectionId} (${section.sectionType}) has no time slots`
         );
       }
@@ -102,7 +109,7 @@ function validateCourses(courses: Course[]): void {
           s => s.sectionType === 'Lecture' && s.sectionId === section.parentLecture
         );
         if (!parentExists) {
-          console.warn(
+          debugWarn(
             `Course ${course.courseCode}, Section ${section.sectionId} (${section.sectionType}) ` +
             `references non-existent parent lecture: ${section.parentLecture}`
           );
@@ -112,7 +119,7 @@ function validateCourses(courses: Course[]): void {
       // Validate time slot format
       for (const slot of section.timeSlots) {
         if (!slot.day || !slot.startTime || !slot.endTime) {
-          console.warn(
+          debugWarn(
             `Course ${course.courseCode}, Section ${section.sectionId} has invalid time slot:`,
             slot
           );
@@ -148,8 +155,8 @@ export function generateSchedules(
   const excludeFullSections = options.excludeFullSections || false;
   const preference = options.preference ?? null;
 
-  console.log(`🚀 Starting schedule generation for ${courses.length} courses...`);
-  console.time('⏱️ Total generation time');
+  debugLog(`🚀 Starting schedule generation for ${courses.length} courses...`);
+  debugTime('⏱️ Total generation time');
 
   // OPTIMIZATION 1: Filter full sections BEFORE generating combinations
   const coursesWithFilteredSections = excludeFullSections
@@ -159,10 +166,10 @@ export function generateSchedules(
       }))
     : courses;
 
-  console.log(`✅ Section filtering complete`);
+  debugLog(`✅ Section filtering complete`);
 
   // OPTIMIZATION 2: Generate with early conflict pruning
-  console.time('⏱️ Combination generation with pruning');
+  debugTime('⏱️ Combination generation with pruning');
   const combinationTarget = Math.max(maxResults * 40, 4000);
   const validSchedules = generateValidCombinationsWithPruning(
     coursesWithFilteredSections,
@@ -170,12 +177,12 @@ export function generateSchedules(
     combinationTarget,
     preference // Generate more than needed to have good selection after scoring
   );
-  console.timeEnd('⏱️ Combination generation with pruning');
+  debugTimeEnd('⏱️ Combination generation with pruning');
 
-  console.log(`✅ Generated ${validSchedules.length} valid schedules (after pruning)`);
+  debugLog(`✅ Generated ${validSchedules.length} valid schedules (after pruning)`);
 
   // Step 3: Evaluate schedules with aggregated metrics and scores
-  console.time('⏱️ Evaluation');
+  debugTime('⏱️ Evaluation');
   const evaluatedSchedules: EvaluatedSchedule[] = validSchedules.map(sections => {
     const metrics = calculateScheduleMetrics(sections);
     const preferenceScore = calculatePreferenceScore(metrics, options.preference ?? null);
@@ -188,12 +195,12 @@ export function generateSchedules(
       metrics,
     };
   });
-  console.timeEnd('⏱️ Evaluation');
+  debugTimeEnd('⏱️ Evaluation');
 
   // Step 4: Sort lexicographically using preference-aware comparator
-  console.time('⏱️ Sorting');
+  debugTime('⏱️ Sorting');
   evaluatedSchedules.sort((a, b) => compareEvaluatedSchedules(a, b, options.preference ?? null));
-  console.timeEnd('⏱️ Sorting');
+  debugTimeEnd('⏱️ Sorting');
 
   // Step 5: Slice top N and expose metadata for UI
   const topEvaluated = evaluatedSchedules.slice(0, maxResults);
@@ -208,8 +215,8 @@ export function generateSchedules(
     },
   }));
 
-  console.timeEnd('⏱️ Total generation time');
-  console.log(`✨ Returning ${topSchedules.length} optimized schedules`);
+  debugTimeEnd('⏱️ Total generation time');
+  debugLog(`✨ Returning ${topSchedules.length} optimized schedules`);
   
   return topSchedules;
 }
@@ -354,7 +361,7 @@ function generateValidCombinationsWithPruning(
     })
     .map(item => item.course);
   
-  console.log('📊 Course order for day separation:',
+  debugLog('📊 Course order for day separation:',
     sortedCourses.map((c) => {
       const analysis = coursesWithAnalysis.find(ca => ca.course === c)!;
       return `${c.courseCode} (${analysis.hasTueThu && !analysis.hasMonWedFri ? 'TueThu' : 
@@ -392,7 +399,7 @@ function generateValidCombinationsWithPruning(
     const numCurrentDays = currentDays.size;
 
     if (courseIndex === 1 && numCurrentDays > 0) {
-      console.log(`📅 After course ${courseIndex}, currently using ${numCurrentDays} days: ${[...currentDays].join(', ')}`);
+      debugLog(`📅 After course ${courseIndex}, currently using ${numCurrentDays} days: ${[...currentDays].join(', ')}`);
     }
 
     courseCombinations = courseCombinations.sort((a, b) => {
@@ -444,7 +451,7 @@ function generateValidCombinationsWithPruning(
       const firstChoice = courseCombinations[0];
       const lecture = firstChoice.find(item => item.selectedSection.sectionType === 'Lecture');
       const days = new Set(firstChoice.flatMap(item => item.selectedSection.timeSlots.map(slot => slot.day)));
-      console.log(`  ✅ Will try first: ${lecture?.course.courseCode} ${lecture?.selectedSection.sectionId} on ${[...days].join(',')}`);
+      debugLog(`  ✅ Will try first: ${lecture?.course.courseCode} ${lecture?.selectedSection.sectionId} on ${[...days].join(',')}`);
     }
 
     // Try each combination
@@ -709,7 +716,7 @@ function generateAllCombinations(courses: Course[]): SelectedCourse[][] {
     
     // If no lectures, skip this course (invalid course data)
     if (lectures.length === 0) {
-      console.warn(`Course ${course.courseCode} has no lecture sections`);
+      debugWarn(`Course ${course.courseCode} has no lecture sections`);
       return [];
     }
 

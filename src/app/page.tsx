@@ -1606,45 +1606,60 @@ export default function Home() {
   };
 
   // Toggle course selection in auto-generate mode
-  const handleToggleCourseSelection = (courseCode: string) => {
-    setSelectedCourseCodes(prev => {
-      if (prev.includes(courseCode)) {
-        // Removing a course
-        const newCodes = prev.filter(code => code !== courseCode);
-        
-        // Only show confirmation if:
-        // 1. This is the last course AND
-        // 2. There are generated schedules to clear
-        if (newCodes.length === 0 && generatedSchedules.length > 0) {
-          setShowClearConfirm(true);
-          return prev; // Don't remove yet, wait for confirmation
-        }
-        
-        // Remove this course from generated schedules
-        if (generatedSchedules.length > 0) {
-          const updatedSchedules = generatedSchedules.map(schedule => ({
-            ...schedule,
-            sections: schedule.sections.filter(section => section.course.courseCode !== courseCode)
-          }));
-          setGeneratedSchedules(updatedSchedules);
+  const handleToggleCourseSelection = useCallback((courseCode: string) => {
+    // Use startTransition to prevent blocking user interactions
+    startModeTransition(() => {
+      setSelectedCourseCodes(prev => {
+        if (prev.includes(courseCode)) {
+          // Removing a course
+          const newCodes = prev.filter(code => code !== courseCode);
           
-          // Update currently displayed schedule
-          if (selectedScheduleIndex < updatedSchedules.length) {
-            const currentSchedule = updatedSchedules[selectedScheduleIndex];
-            const schedulesWithColors = assignColorsToSchedule(currentSchedule.sections);
-            setSelectedCourses(schedulesWithColors);
-            updateConflicts(schedulesWithColors);
-            setConflictToast([]);
+          // Only show confirmation if:
+          // 1. This is the last course AND
+          // 2. There are generated schedules to clear
+          if (newCodes.length === 0 && generatedSchedules.length > 0) {
+            setShowClearConfirm(true);
+            return prev; // Don't remove yet, wait for confirmation
           }
+          
+          // Remove this course from generated schedules
+          if (generatedSchedules.length > 0) {
+            const updatedSchedules = generatedSchedules.map(schedule => ({
+              ...schedule,
+              sections: schedule.sections.filter(section => section.course.courseCode !== courseCode)
+            }));
+            setGeneratedSchedules(updatedSchedules);
+            
+            // Update currently displayed schedule (inline color assignment)
+            if (selectedScheduleIndex < updatedSchedules.length) {
+              const currentSchedule = updatedSchedules[selectedScheduleIndex];
+              const colorMap = new Map<string, string>();
+              const usedColors: string[] = [];
+              const schedulesWithColors = currentSchedule.sections
+                .filter((sc): sc is SelectedCourse => Boolean(sc && sc.course && sc.selectedSection))
+                .map(sc => {
+                  const code = sc.course.courseCode;
+                  if (!colorMap.has(code)) {
+                    const color = generateCourseColor(code, usedColors);
+                    colorMap.set(code, color);
+                    usedColors.push(color);
+                  }
+                  return { ...sc, color: colorMap.get(code)! };
+                });
+              setSelectedCourses(schedulesWithColors);
+              updateConflicts(schedulesWithColors);
+              setConflictToast([]);
+            }
+          }
+          
+          return newCodes;
+        } else {
+          // Adding a course
+          return [...prev, courseCode];
         }
-        
-        return newCodes;
-      } else {
-        // Adding a course
-        return [...prev, courseCode];
-      }
+      });
     });
-  };
+  }, [generatedSchedules, selectedScheduleIndex, updateConflicts, startModeTransition]);
 
   // Handle schedule generation
   // Helper function to assign colors to a schedule
@@ -1748,6 +1763,10 @@ export default function Home() {
 
     setIsGenerating(true);
 
+    // Use setTimeout to yield to the main thread before heavy computation
+    // This prevents blocking user interactions and improves INP
+    await new Promise(resolve => setTimeout(resolve, 0));
+
     try {
       // Generate schedules using the algorithm
       const schedules = generateSchedules(coursesToGenerate, {
@@ -1755,6 +1774,9 @@ export default function Home() {
         maxResults: 100,
         excludeFullSections,
       });
+
+      // Yield again before updating state to keep UI responsive
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       setGeneratedSchedules(schedules);
       setSelectedScheduleIndex(0);
@@ -1778,8 +1800,6 @@ export default function Home() {
         updateConflicts([]);
         setConflictToast([]);
       }
-
-      console.log(`✨ Generated ${schedules.length} valid schedules`);
     } catch (error) {
       console.error('Error generating schedules:', error);
       showGenerationNotice({
